@@ -1,6 +1,6 @@
 {
-  "latest_version": "2.1",
+  "latest_version": "2.2",
   "download_url": "",
-  "release_notes": "修正 YouTube 最新影片卡片位置：現在固定顯示在推薦欄與進度區之間；讀取中會顯示狀態，RSS 失敗時也會保留提示與前往頻道按鈕。",
+  "release_notes": "YouTube 最新影片改用 GitHub 快取：由 GitHub Actions 每 30 分鐘讀取頻道 RSS，程式只讀 latest_video.json 與 GitHub 上的縮圖，避免使用者電腦直接連 YouTube RSS 失敗。",
   "force_update": false
 }
