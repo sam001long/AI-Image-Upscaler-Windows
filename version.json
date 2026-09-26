@@ -1,6 +1,6 @@
 {
-  "latest_version": "1.8",
+  "latest_version": "1.9",
   "download_url": "",
-  "release_notes": "倍率更新為 2× / 4× / 8× / 16× / 32×，並保留自動硬體策略與 GitHub 推廣設定。",
+  "release_notes": "新增尺寸安全限制：會依原圖尺寸停用不合理倍率；32× 僅建議原圖長邊 500px 以下；超大輸出會警告或阻止。",
   "force_update": false
 }
