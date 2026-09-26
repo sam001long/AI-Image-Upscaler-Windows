@@ -1,6 +1,6 @@
 {
-  "latest_version": "1.9",
+  "latest_version": "2.0",
   "download_url": "",
-  "release_notes": "新增尺寸安全限制：會依原圖尺寸停用不合理倍率；32× 僅建議原圖長邊 500px 以下；超大輸出會警告或阻止。",
+  "release_notes": "新增 YouTube 最新影片卡片：啟動時自動讀取頻道 RSS，顯示最新影片縮圖、標題與觀看按鈕；離線時自動退回固定推廣欄。",
   "force_update": false
 }
