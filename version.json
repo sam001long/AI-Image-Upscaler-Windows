@@ -1,6 +1,6 @@
 {
-  "latest_version": "2.4",
+  "latest_version": "2.5",
   "download_url": "",
-  "release_notes": "修正真正的網路連線錯誤：HTTP User-Agent 原本含中文字，Python 在送出請求前就因 Header 編碼失敗。v2.4 改成純 ASCII User-Agent，GitHub 與 YouTube 最新影片資料應可正常載入。",
+  "release_notes": "介面整理：將推薦與 YouTube 最新影片合併成單一卡片，保留主圖預覽大小；縮圖、影片標題、推廣文字與按鈕集中在同一區塊。",
   "force_update": false
 }
