@@ -1,6 +1,6 @@
 {
-  "latest_version": "1.6",
+  "latest_version": "1.8",
   "download_url": "",
-  "release_notes": "Portable 版本準備中",
+  "release_notes": "倍率更新為 2× / 4× / 8× / 16× / 32×，並保留自動硬體策略與 GitHub 推廣設定。",
   "force_update": false
 }
