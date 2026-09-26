@@ -1,6 +1,6 @@
 {
-  "latest_version": "2.2",
+  "latest_version": "2.3",
   "download_url": "",
-  "release_notes": "YouTube 最新影片改用 GitHub 快取：由 GitHub Actions 每 30 分鐘讀取頻道 RSS，程式只讀 latest_video.json 與 GitHub 上的縮圖，避免使用者電腦直接連 YouTube RSS 失敗。",
+  "release_notes": "修正部分網路無法讀取 raw.githubusercontent.com：線上設定改走 GitHub API；YouTube 縮圖直接嵌入 latest_video.json，避免額外圖片網域被封鎖。",
   "force_update": false
 }
