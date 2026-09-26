@@ -1,6 +1,6 @@
 {
-  "latest_version": "2.3",
+  "latest_version": "2.4",
   "download_url": "",
-  "release_notes": "修正部分網路無法讀取 raw.githubusercontent.com：線上設定改走 GitHub API；YouTube 縮圖直接嵌入 latest_video.json，避免額外圖片網域被封鎖。",
+  "release_notes": "修正真正的網路連線錯誤：HTTP User-Agent 原本含中文字，Python 在送出請求前就因 Header 編碼失敗。v2.4 改成純 ASCII User-Agent，GitHub 與 YouTube 最新影片資料應可正常載入。",
   "force_update": false
 }
