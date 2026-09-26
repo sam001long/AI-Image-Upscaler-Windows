@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+.buildenv/
+build/
+dist/
+*.spec
+engine/*.exe
+engine/*.dll
+engine/models/*.bin
+engine/models/*.param
+AI_Image_Upscaler_Portable/
