@@ -1,6 +1,6 @@
 {
-  "latest_version": "2.0",
+  "latest_version": "2.1",
   "download_url": "",
-  "release_notes": "新增 YouTube 最新影片卡片：啟動時自動讀取頻道 RSS，顯示最新影片縮圖、標題與觀看按鈕；離線時自動退回固定推廣欄。",
+  "release_notes": "修正 YouTube 最新影片卡片位置：現在固定顯示在推薦欄與進度區之間；讀取中會顯示狀態，RSS 失敗時也會保留提示與前往頻道按鈕。",
   "force_update": false
 }
