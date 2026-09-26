@@ -1,16 +1,16 @@
 {
   "enabled": true,
   "title": "喜歡這個工具嗎？",
-  "message": "如果這個工具對你有幫助，歡迎到我的 YouTube 頻道看看。喜歡內容的話，也別忘了按讚、訂閱與開啟通知，給我一些支持與鼓勵！",
+  "message": "如果這個工具對你有幫助，歡迎看看我的 YouTube 頻道，也歡迎按讚、訂閱與開啟通知支持我。",
   "button_text": "前往 YouTube 頻道",
-  "url": "https://www.youtube.com/@1%E5%B0%8F%E6%99%82%E9%9F%B3%E6%A8%82%E4%B8%8D%E9%96%93%E6%96%B7",
-  "banner_image_url": "",
-  "links": [
-    {
-      "label": "YouTube",
-      "url": "https://www.youtube.com/@1%E5%B0%8F%E6%99%82%E9%9F%B3%E6%A8%82%E4%B8%8D%E9%96%93%E6%96%B7"
-    }
-  ],
+  "url": "https://www.youtube.com/channel/UCkePBCiTrqwbYoUx7ahynSQ",
+  "youtube": {
+    "enabled": true,
+    "channel_id": "UCkePBCiTrqwbYoUx7ahynSQ",
+    "show_latest_video": true,
+    "watch_button_text": "立即觀看",
+    "channel_button_text": "前往頻道"
+  },
   "contact": {
     "enabled": false,
     "title": "其他聯絡方式",
