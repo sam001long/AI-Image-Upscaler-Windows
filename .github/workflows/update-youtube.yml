@@ -33,12 +33,12 @@ jobs:
       - name: Commit updated cache
         shell: bash
         run: |
-          if git diff --quiet -- latest_video.json assets/latest_youtube.jpg; then
+          if git diff --quiet -- latest_video.json; then
             echo "No changes"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add latest_video.json assets/latest_youtube.jpg
+          git add latest_video.json
           git commit -m "Update latest YouTube video"
           git push
