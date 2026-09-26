@@ -1,5 +1,5 @@
+import base64
 import json
-import os
 import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
@@ -7,8 +7,6 @@ from datetime import datetime, timezone
 CHANNEL_ID = "UCkePBCiTrqwbYoUx7ahynSQ"
 FEED_URL = f"https://www.youtube.com/feeds/videos.xml?channel_id={CHANNEL_ID}"
 OUT_JSON = "latest_video.json"
-OUT_IMAGE = os.path.join("assets", "latest_youtube.jpg")
-RAW_IMAGE_URL = "https://raw.githubusercontent.com/sam001long/AI-Image-Upscaler-Windows/main/assets/latest_youtube.jpg"
 
 NS = {
     "atom": "http://www.w3.org/2005/Atom",
@@ -45,11 +43,10 @@ if group is not None:
 if not thumb_url and video_id:
     thumb_url = f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg"
 
-os.makedirs("assets", exist_ok=True)
+thumbnail_base64 = ""
 if thumb_url:
     image = fetch(thumb_url)
-    with open(OUT_IMAGE, "wb") as f:
-        f.write(image)
+    thumbnail_base64 = base64.b64encode(image).decode("ascii")
 
 payload = {
     "ok": True,
@@ -58,7 +55,7 @@ payload = {
     "title": title,
     "url": video_url,
     "published": published,
-    "thumbnail_url": RAW_IMAGE_URL if os.path.exists(OUT_IMAGE) else "",
+    "thumbnail_base64": thumbnail_base64,
     "updated_at": datetime.now(timezone.utc).isoformat(),
 }
 
@@ -66,4 +63,9 @@ with open(OUT_JSON, "w", encoding="utf-8") as f:
     json.dump(payload, f, ensure_ascii=False, indent=2)
     f.write("\n")
 
-print(json.dumps(payload, ensure_ascii=False))
+print(json.dumps({
+    "ok": payload["ok"],
+    "video_id": payload["video_id"],
+    "title": payload["title"],
+    "updated_at": payload["updated_at"],
+}, ensure_ascii=False))
