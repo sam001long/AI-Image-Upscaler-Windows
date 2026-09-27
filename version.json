@@ -1,6 +1,6 @@
 {
-  "latest_version": "2.6",
+  "latest_version": "2.8",
   "download_url": "",
-  "release_notes": "YouTube 推廣改成低干擾單列推薦區，縮圖縮小，按鈕簡化成觀看/頻道，並可用 × 隱藏推薦列。",
+  "release_notes": "主畫面改為簡潔版，進階控制集中到工具設定；新增暫存空間充足判斷、JPG 品質、Tile、暫存資料夾與 YouTube 顯示設定。",
   "force_update": false
 }
