@@ -1,6 +1,6 @@
 {
-  "latest_version": "2.5",
+  "latest_version": "2.6",
   "download_url": "",
-  "release_notes": "介面整理：將推薦與 YouTube 最新影片合併成單一卡片，保留主圖預覽大小；縮圖、影片標題、推廣文字與按鈕集中在同一區塊。",
+  "release_notes": "YouTube 推廣改成低干擾單列推薦區，縮圖縮小，按鈕簡化成觀看/頻道，並可用 × 隱藏推薦列。",
   "force_update": false
 }
