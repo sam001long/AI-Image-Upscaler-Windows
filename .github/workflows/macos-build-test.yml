@@ -35,6 +35,18 @@ jobs:
           uname -m
           sysctl -n hw.memsize
 
+      - name: Reconstruct and validate macOS project archive
+        run: |
+          cat \
+            macos/package_parts/lean_00.b64 \
+            macos/package_parts/lean_01.b64 \
+            macos/package_parts/lean_02.b64 \
+            macos/package_parts/lean_03.b64 \
+            macos/package_parts/lean_04_06.b64 \
+            > macos/project.b64
+          base64 --decode macos/project.b64 > macos/BigIMG_macOS_v1_0_BUILD_PROJECT.zip
+          unzip -t macos/BigIMG_macOS_v1_0_BUILD_PROJECT.zip
+
       - name: Extract BigIMG macOS project
         run: |
           rm -rf macos/buildsrc
