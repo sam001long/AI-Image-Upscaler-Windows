@@ -9,12 +9,16 @@
     "channel_id": "UCkePBCiTrqwbYoUx7ahynSQ",
     "show_latest_video": true,
     "watch_button_text": "立即觀看",
-    "channel_button_text": "前往頻道"
+    "channel_button_text": "前往頻道",
+    "source": "manual",
+    "video_id": "lZjZML5UtMY",
+    "title": "【感人結婚MV】原來我們早就遇見｜有些緣分，從童年就已經開始",
+    "url": "https://www.youtube.com/watch?v=lZjZML5UtMY"
   },
   "contact": {
     "enabled": false,
     "title": "其他聯絡方式",
     "items": []
   },
-  "updated_at": "2026-09-26"
+  "updated_at": "2026-10-04"
 }
