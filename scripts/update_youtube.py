@@ -1,123 +1,87 @@
 import base64
 import json
-import binascii
 import re
 import time
 import urllib.error
 import urllib.request
-import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
 
-CHANNEL_ID = "UCkePBCiTrqwbYoUx7ahynSQ"
-FEED_URL = f"https://www.youtube.com/feeds/videos.xml?channel_id={CHANNEL_ID}"
-OUT_JSON = "latest_video.json"
+PROMO_JSON = Path("promo.json")
+OUT_JSON = Path("latest_video.json")
 
-NS = {
-    "atom": "http://www.w3.org/2005/Atom",
-    "yt": "http://www.youtube.com/xml/schemas/2015",
-    "media": "http://search.yahoo.com/mrss/",
-}
 
 def fetch(url):
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
     with urllib.request.urlopen(req, timeout=30) as resp:
         return resp.read()
 
-def has_valid_cache():
-    try:
-        cached = json.loads(Path(OUT_JSON).read_text(encoding="utf-8"))
-        if not isinstance(cached, dict):
-            return False
-        required = ("video_id", "title", "url", "published",
-                    "thumbnail_base64", "updated_at")
-        if cached.get("ok") is not True or cached.get("channel_id") != CHANNEL_ID:
-            return False
-        if any(not isinstance(cached.get(key), str) or not cached[key].strip()
-               for key in required):
-            return False
-        if not re.fullmatch(r"[A-Za-z0-9_-]{11}", cached["video_id"]):
-            return False
-        if cached["url"] != f'https://www.youtube.com/watch?v={cached["video_id"]}':
-            return False
-        for key in ("published", "updated_at"):
-            if datetime.fromisoformat(cached[key]).tzinfo is None:
-                return False
-        return bool(base64.b64decode(cached["thumbnail_base64"], validate=True))
-    except (OSError, ValueError, TypeError, binascii.Error):
-        return False
+
+def load_selected_video():
+    promo = json.loads(PROMO_JSON.read_text(encoding="utf-8"))
+    youtube = promo.get("youtube") or {}
+
+    video_id = str(youtube.get("video_id") or "").strip()
+    title = str(youtube.get("title") or "").strip()
+    url = str(youtube.get("url") or "").strip()
+
+    if youtube.get("source") != "manual":
+        raise SystemExit('promo.json youtube.source must be "manual"')
+    if not re.fullmatch(r"[A-Za-z0-9_-]{11}", video_id):
+        raise SystemExit("Invalid YouTube video_id")
+    if not title:
+        raise SystemExit("Missing YouTube title")
+
+    expected = f"https://www.youtube.com/watch?v={video_id}"
+    if not url:
+        url = expected
+    if url != expected:
+        raise SystemExit(f"YouTube url must be {expected}")
+
+    return video_id, title, url
 
 
-def fetch_latest_entry():
-    last_error = ""
-    for attempt, delay in enumerate((0, 5, 15), start=1):
-        if delay:
-            time.sleep(delay)
-        try:
-            root = ET.fromstring(fetch(FEED_URL))
-            entry = root.find("atom:entry", NS)
-            if entry is None:
-                raise ValueError("No videos found in channel RSS feed")
-            video_id = entry.findtext("yt:videoId", default="", namespaces=NS).strip()
-            published = entry.findtext("atom:published", default="", namespaces=NS).strip()
-            if not re.fullmatch(r"[A-Za-z0-9_-]{11}", video_id):
-                raise ValueError("Invalid RSS video ID")
-            if not published or datetime.fromisoformat(published).tzinfo is None:
-                raise ValueError("Invalid RSS publication timestamp")
-            return entry
-        except (urllib.error.URLError, OSError, ET.ParseError, ValueError) as exc:
-            last_error = str(exc).replace("\n", " ").replace("\r", " ")
-            print(f"RSS attempt {attempt}/3 failed: {last_error}")
-
-    if has_valid_cache():
-        print("::warning::YouTube RSS failed after 3 attempts; keeping existing cache")
-        raise SystemExit(0)
-    raise SystemExit(f"YouTube RSS failed and no valid cache is available: {last_error}")
+def fetch_thumbnail(video_id):
+    for thumb_url in (
+        f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg",
+        f"https://i.ytimg.com/vi/{video_id}/mqdefault.jpg",
+    ):
+        for delay in (0, 3, 8):
+            if delay:
+                time.sleep(delay)
+            try:
+                image = fetch(thumb_url)
+                if image:
+                    return base64.b64encode(image).decode("ascii")
+            except (urllib.error.URLError, OSError) as exc:
+                print(f"Thumbnail fetch failed: {exc}")
+    return ""
 
 
-entry = fetch_latest_entry()
-
-title = entry.findtext("atom:title", default="最新影片", namespaces=NS).strip()
-video_id = entry.findtext("yt:videoId", default="", namespaces=NS).strip()
-published = entry.findtext("atom:published", default="", namespaces=NS).strip()
-
-link = entry.find("atom:link[@rel='alternate']", NS)
-video_url = link.attrib.get("href", "") if link is not None else ""
-if not video_url and video_id:
-    video_url = f"https://www.youtube.com/watch?v={video_id}"
-
-thumb_url = ""
-group = entry.find("media:group", NS)
-if group is not None:
-    thumb = group.find("media:thumbnail", NS)
-    if thumb is not None:
-        thumb_url = thumb.attrib.get("url", "")
-if not thumb_url and video_id:
-    thumb_url = f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg"
-
-thumbnail_base64 = ""
-if thumb_url:
-    image = fetch(thumb_url)
-    thumbnail_base64 = base64.b64encode(image).decode("ascii")
+video_id, title, video_url = load_selected_video()
+now = datetime.now(timezone.utc).isoformat()
 
 payload = {
     "ok": True,
-    "channel_id": CHANNEL_ID,
+    "source": "manual",
+    "channel_id": "UCkePBCiTrqwbYoUx7ahynSQ",
     "video_id": video_id,
     "title": title,
     "url": video_url,
-    "published": published,
-    "thumbnail_base64": thumbnail_base64,
-    "updated_at": datetime.now(timezone.utc).isoformat(),
+    "published": now,
+    "thumbnail_base64": fetch_thumbnail(video_id),
+    "updated_at": now,
 }
 
-with open(OUT_JSON, "w", encoding="utf-8") as f:
-    json.dump(payload, f, ensure_ascii=False, indent=2)
-    f.write("\n")
+OUT_JSON.write_text(
+    json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+    encoding="utf-8",
+)
 
 print(json.dumps({
-    "ok": payload["ok"],
-    "video_id": payload["video_id"],
-    "title": payload["title"],
-    "updated_at": payload["updated_at"],
+    "ok": True,
+    "source": "manual",
+    "video_id": video_id,
+    "title": title,
+    "updated_at": now,
 }, ensure_ascii=False))
