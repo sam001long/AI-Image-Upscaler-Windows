@@ -1,4 +1,5 @@
 name: macOS Build Test
+# v1.0.2 rebuild after patch-anchor fix
 
 on:
   workflow_dispatch:
