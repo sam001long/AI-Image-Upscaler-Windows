@@ -82,21 +82,17 @@ new_done = '''                elif kind == "done":
                     # macOS Aqua may not repaint widgets before a modal messagebox.
                     # Force the 100% state to paint first, then show the dialog.
                     self.update_idletasks()
-                    self.after(120, lambda: messagebox.showinfo("完成", "圖片放大完成."))'''
+                    self.after(120, lambda: messagebox.showinfo("完成", "圖片放大完成。"))'''
 if old_done not in s:
     raise SystemExit("Missing done handler anchor")
 s = s.replace(old_done, new_done, 1)
 
-old_svg = '''                    if preview:
-                        msg += f"\nPNG 預覽：{preview}"
-                    messagebox.showinfo("完成", msg)'''
-new_svg = '''                    if preview:
-                        msg += f"\nPNG 預覽：{preview}"
-                    self.update_idletasks()
+old_svg_call = '                    messagebox.showinfo("完成", msg)'
+new_svg_call = '''                    self.update_idletasks()
                     self.after(120, lambda m=msg: messagebox.showinfo("完成", m))'''
-if old_svg not in s:
-    raise SystemExit("Missing SVG done handler anchor")
-s = s.replace(old_svg, new_svg, 1)
+if old_svg_call not in s:
+    raise SystemExit("Missing SVG completion call")
+s = s.replace(old_svg_call, new_svg_call, 1)
 
 p.write_text(s, encoding="utf-8")
 print("Applied macOS v1.0.2 progress repaint fix")
