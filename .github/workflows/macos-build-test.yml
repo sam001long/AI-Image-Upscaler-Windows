@@ -54,6 +54,12 @@ jobs:
           ditto -x -k macos/BigIMG_macOS_v1_0_BUILD_PROJECT.zip macos/buildsrc
           ls -la macos/buildsrc/BigIMG_macOS_v1_0
 
+      - name: Apply macOS v1.0.1 progress fix
+        run: |
+          python3 macos/patches/fix_progress_v1_0_1.py
+          grep -n "macOS v1.0.1" macos/buildsrc/BigIMG_macOS_v1_0/app_mac.py
+          grep -n "progress_panel" macos/buildsrc/BigIMG_macOS_v1_0/app_mac.py
+
       - name: Setup Python 3.12
         uses: actions/setup-python@v5
         with:
@@ -120,13 +126,13 @@ jobs:
       - name: Package app
         working-directory: macos/buildsrc/BigIMG_macOS_v1_0
         run: |
-          tar -czf "BigIMG-macOS-v1.0-${{ matrix.runner }}.tar.gz" -C dist BigIMG.app
-          shasum -a 256 "BigIMG-macOS-v1.0-${{ matrix.runner }}.tar.gz"
+          tar -czf "BigIMG-macOS-v1.0.1-${{ matrix.runner }}.tar.gz" -C dist BigIMG.app
+          shasum -a 256 "BigIMG-macOS-v1.0.1-${{ matrix.runner }}.tar.gz"
 
       - name: Upload BigIMG.app artifact
         uses: actions/upload-artifact@v4
         with:
-          name: BigIMG-macOS-v1.0-${{ matrix.runner }}
-          path: macos/buildsrc/BigIMG_macOS_v1_0/BigIMG-macOS-v1.0-${{ matrix.runner }}.tar.gz
+          name: BigIMG-macOS-v1.0.1-${{ matrix.runner }}
+          path: macos/buildsrc/BigIMG_macOS_v1_0/BigIMG-macOS-v1.0.1-${{ matrix.runner }}.tar.gz
           if-no-files-found: error
           retention-days: 14
