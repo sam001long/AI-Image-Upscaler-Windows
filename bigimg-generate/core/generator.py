@@ -8,8 +8,10 @@ import torch
 from PIL import Image
 from diffusers import (
     StableDiffusionImg2ImgPipeline,
+    StableDiffusionInpaintPipeline,
     StableDiffusionPipeline,
     StableDiffusionXLImg2ImgPipeline,
+    StableDiffusionXLInpaintPipeline,
     StableDiffusionXLPipeline,
 )
 
@@ -30,6 +32,7 @@ class GenerateRequest:
     lora_scale: float = 1.0
     mode: str = "txt2img"
     input_image: Image.Image | None = None
+    mask_image: Image.Image | None = None
     strength: float = 0.45
 
 
@@ -55,6 +58,16 @@ class LocalGenerator:
             return torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)
         except Exception:
             return None
+
+    def hardware_profile(self) -> dict:
+        vram = self.vram_gb()
+        if vram is None:
+            return {"name": "CPU / 相容模式", "width": 512, "height": 512, "steps": 8, "low_vram": True}
+        if vram < 6:
+            return {"name": "低顯存", "width": 512, "height": 512, "steps": 8, "low_vram": True}
+        if vram < 10:
+            return {"name": "標準", "width": 768, "height": 768, "steps": 12, "low_vram": True}
+        return {"name": "高品質", "width": 1024, "height": 1024, "steps": 20, "low_vram": False}
 
     def unload(self) -> None:
         self.pipe = None
@@ -86,15 +99,7 @@ class LocalGenerator:
             pipe = pipe.to("cpu")
         return pipe
 
-    def load(
-        self,
-        model_path: str,
-        family: str,
-        low_vram: bool,
-        mode: str,
-        lora_path: str | None,
-        lora_scale: float,
-    ) -> None:
+    def load(self, model_path: str, family: str, low_vram: bool, mode: str, lora_path: str | None, lora_scale: float) -> None:
         resolved = self._resolve_family(family, model_path)
         lora_abs = str(Path(lora_path).resolve()) if lora_path else None
         key = (str(Path(model_path).resolve()), resolved, low_vram, mode, lora_abs, round(lora_scale, 3))
@@ -110,6 +115,8 @@ class LocalGenerator:
 
         if mode == "img2img":
             cls = StableDiffusionXLImg2ImgPipeline if resolved == "SDXL" else StableDiffusionImg2ImgPipeline
+        elif mode == "inpaint":
+            cls = StableDiffusionXLInpaintPipeline if resolved == "SDXL" else StableDiffusionInpaintPipeline
         else:
             cls = StableDiffusionXLPipeline if resolved == "SDXL" else StableDiffusionPipeline
 
@@ -128,17 +135,12 @@ class LocalGenerator:
     def generate(self, req: GenerateRequest):
         if not req.prompt.strip():
             raise ValueError("Prompt 不可空白。")
-        if req.mode == "img2img" and req.input_image is None:
-            raise ValueError("參考圖生圖模式需要先選擇一張參考圖。")
+        if req.mode in {"img2img", "inpaint"} and req.input_image is None:
+            raise ValueError("這個模式需要先選擇參考圖。")
+        if req.mode == "inpaint" and req.mask_image is None:
+            raise ValueError("局部重繪模式需要遮罩圖。白色區域會被重新生成。")
 
-        self.load(
-            req.model_path,
-            req.family,
-            req.low_vram,
-            req.mode,
-            req.lora_path,
-            req.lora_scale,
-        )
+        self.load(req.model_path, req.family, req.low_vram, req.mode, req.lora_path, req.lora_scale)
 
         seed = torch.seed() % (2**31 - 1) if req.seed < 0 else req.seed
         device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -157,6 +159,12 @@ class LocalGenerator:
         if req.mode == "img2img":
             image = req.input_image.convert("RGB").resize((req.width, req.height), Image.LANCZOS)
             kwargs["image"] = image
+            kwargs["strength"] = max(0.05, min(0.95, float(req.strength)))
+        elif req.mode == "inpaint":
+            image = req.input_image.convert("RGB").resize((req.width, req.height), Image.LANCZOS)
+            mask = req.mask_image.convert("L").resize((req.width, req.height), Image.NEAREST)
+            kwargs["image"] = image
+            kwargs["mask_image"] = mask
             kwargs["strength"] = max(0.05, min(0.95, float(req.strength)))
 
         result = self.pipe(**kwargs)
