@@ -178,3 +178,23 @@ BigIMG Generate 與 BigIMG 維持兩個獨立工具。
 ### 單檔模型的注意事項
 
 Diffusers 的 `from_single_file()` 可以直接讀本機 `.ckpt` / `.safetensors`，但某些單檔模型第一次載入時仍可能需要從 Hugging Face 取得對應設定並寫入快取。若未來要做到完全離線 Portable，會再把必要 config/cache 一併打包。
+
+
+## 一鍵準備官方驗收模型
+
+如果只是要先確認 BigIMG Generate 能不能真的生圖，不用自己找模型。
+
+1. 先執行 `setup.bat`。
+2. 雙擊 `download_validation_model.bat`。
+3. 會從官方 Hugging Face repo 下載：
+   `stable-diffusion-v1-5/stable-diffusion-v1-5`
+4. 主要 checkpoint：
+   `v1-5-pruned-emaonly.safetensors`（約 4.27 GB）
+5. 同時準備輕量 config / tokenizer / scheduler 檔案，降低第一次單檔載入時缺設定的機率。
+6. 完成後雙擊 `first_image_test.bat`。
+
+下載的 checkpoint 會放到：
+`models/checkpoints/sd15/`
+
+設定快取會放到：
+`models/configs/sd15-v1-5/`
