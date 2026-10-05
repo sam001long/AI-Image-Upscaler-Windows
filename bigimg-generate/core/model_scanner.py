@@ -28,6 +28,16 @@ class LoraInfo:
         return f"{self.path.name}  {self.size_mb:.0f} MB"
 
 
+@dataclass(frozen=True)
+class VaeInfo:
+    path: Path
+    size_mb: float
+
+    @property
+    def label(self) -> str:
+        return f"{self.path.name}  {self.size_mb:.0f} MB"
+
+
 def _guess_family(path: Path) -> str:
     text = str(path).lower()
     name = path.name.lower()
@@ -65,4 +75,19 @@ def scan_loras(root: str | Path) -> list[LoraInfo]:
         except OSError:
             size_mb = 0.0
         results.append(LoraInfo(path.resolve(), size_mb))
+    return sorted(results, key=lambda x: x.path.name.lower())
+
+
+def scan_vaes(root: str | Path) -> list[VaeInfo]:
+    root = Path(root)
+    root.mkdir(parents=True, exist_ok=True)
+    results: list[VaeInfo] = []
+    for path in root.rglob("*.safetensors"):
+        if not path.is_file():
+            continue
+        try:
+            size_mb = path.stat().st_size / (1024 ** 2)
+        except OSError:
+            size_mb = 0.0
+        results.append(VaeInfo(path.resolve(), size_mb))
     return sorted(results, key=lambda x: x.path.name.lower())
