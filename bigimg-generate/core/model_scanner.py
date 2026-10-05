@@ -6,6 +6,7 @@ from pathlib import Path
 
 SUPPORTED_EXTENSIONS = {".safetensors", ".ckpt"}
 CONTROLNET_EXTENSIONS = {".safetensors", ".ckpt", ".pth"}
+IPADAPTER_EXTENSIONS = {".safetensors", ".bin"}
 
 
 @dataclass(frozen=True)
@@ -48,6 +49,17 @@ class ControlNetInfo:
     @property
     def label(self) -> str:
         return f"{self.path.name}  [{self.family}]  {self.size_gb:.2f} GB"
+
+
+@dataclass(frozen=True)
+class IPAdapterInfo:
+    path: Path
+    family: str
+    size_mb: float
+
+    @property
+    def label(self) -> str:
+        return f"{self.path.name}  [{self.family}]  {self.size_mb:.0f} MB"
 
 
 def _guess_family(path: Path) -> str:
@@ -117,4 +129,19 @@ def scan_controlnets(root: str | Path) -> list[ControlNetInfo]:
         except OSError:
             size_gb = 0.0
         results.append(ControlNetInfo(path.resolve(), _guess_family(path), size_gb))
+    return sorted(results, key=lambda x: x.path.name.lower())
+
+
+def scan_ipadapters(root: str | Path) -> list[IPAdapterInfo]:
+    root = Path(root)
+    root.mkdir(parents=True, exist_ok=True)
+    results: list[IPAdapterInfo] = []
+    for path in root.rglob("*"):
+        if not path.is_file() or path.suffix.lower() not in IPADAPTER_EXTENSIONS:
+            continue
+        try:
+            size_mb = path.stat().st_size / (1024 ** 2)
+        except OSError:
+            size_mb = 0.0
+        results.append(IPAdapterInfo(path.resolve(), _guess_family(path), size_mb))
     return sorted(results, key=lambda x: x.path.name.lower())
