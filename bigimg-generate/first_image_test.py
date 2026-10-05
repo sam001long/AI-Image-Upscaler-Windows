@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import sys
 import traceback
 from datetime import datetime
 from pathlib import Path
@@ -14,6 +13,7 @@ from core.model_scanner import scan_models
 
 APP_DIR = Path(__file__).resolve().parent
 MODEL_DIR = APP_DIR / "models" / "checkpoints"
+CONFIG_DIR = APP_DIR / "models" / "configs" / "sd15-v1-5"
 OUTPUT_DIR = APP_DIR / "outputs" / "validation"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -21,18 +21,13 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 def classify_error(exc: BaseException) -> str:
     text = str(exc).lower()
     if "out of memory" in text or "cuda oom" in text:
-        return (
-            "GPU 顯存不足。先改用 512x512、較少 steps，並開啟低 VRAM 模式。"
-        )
+        return "GPU 顯存不足。先維持 512x512、低 steps、低 VRAM 模式。"
     if "cuda" in text and ("not available" in text or "driver" in text):
         return "CUDA / NVIDIA 驅動異常。請先執行 smoke_test.bat 檢查環境。"
-    if "config" in text and ("hub" in text or "local" in text or "repository" in text):
-        return (
-            "模型缺少 Diffusers 所需設定。單檔 checkpoint 第一次載入可能需要網路取得設定快取，"
-            "或之後提供本機 config。"
-        )
+    if "config" in text or "local_files_only" in text:
+        return "模型設定檔不完整。請重新執行 download_validation_model.bat。"
     if "safetensor" in text or "checkpoint" in text:
-        return "模型檔可能不相容或損壞。請先換一個已知可用的 SD1.5 / SDXL checkpoint 測試。"
+        return "模型檔可能不相容或損壞。請重新下載官方驗收模型。"
     return "未分類錯誤。請保留下方完整 traceback。"
 
 
@@ -63,10 +58,7 @@ def main() -> int:
     else:
         if not models:
             print("[ERROR] No checkpoint found.")
-            print("Put one .safetensors model under:")
-            print("  models/checkpoints/sd15/")
-            print("or")
-            print("  models/checkpoints/sdxl/")
+            print("Run download_validation_model.bat first.")
             return 2
         model_path = models[0].path
         family = args.family if args.family != "Auto" else models[0].family
@@ -76,6 +68,7 @@ def main() -> int:
 
     print("Model:", model_path)
     print("Family:", family)
+    print("Local config:", CONFIG_DIR if CONFIG_DIR.exists() else "not found")
     print("CUDA:", torch.cuda.is_available())
     if torch.cuda.is_available():
         print("GPU:", torch.cuda.get_device_name(0))
