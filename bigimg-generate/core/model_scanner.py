@@ -5,6 +5,7 @@ from pathlib import Path
 
 
 SUPPORTED_EXTENSIONS = {".safetensors", ".ckpt"}
+CONTROLNET_EXTENSIONS = {".safetensors", ".ckpt", ".pth"}
 
 
 @dataclass(frozen=True)
@@ -36,6 +37,17 @@ class VaeInfo:
     @property
     def label(self) -> str:
         return f"{self.path.name}  {self.size_mb:.0f} MB"
+
+
+@dataclass(frozen=True)
+class ControlNetInfo:
+    path: Path
+    family: str
+    size_gb: float
+
+    @property
+    def label(self) -> str:
+        return f"{self.path.name}  [{self.family}]  {self.size_gb:.2f} GB"
 
 
 def _guess_family(path: Path) -> str:
@@ -90,4 +102,19 @@ def scan_vaes(root: str | Path) -> list[VaeInfo]:
         except OSError:
             size_mb = 0.0
         results.append(VaeInfo(path.resolve(), size_mb))
+    return sorted(results, key=lambda x: x.path.name.lower())
+
+
+def scan_controlnets(root: str | Path) -> list[ControlNetInfo]:
+    root = Path(root)
+    root.mkdir(parents=True, exist_ok=True)
+    results: list[ControlNetInfo] = []
+    for path in root.rglob("*"):
+        if not path.is_file() or path.suffix.lower() not in CONTROLNET_EXTENSIONS:
+            continue
+        try:
+            size_gb = path.stat().st_size / (1024 ** 3)
+        except OSError:
+            size_gb = 0.0
+        results.append(ControlNetInfo(path.resolve(), _guess_family(path), size_gb))
     return sorted(results, key=lambda x: x.path.name.lower())
