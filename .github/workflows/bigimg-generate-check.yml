@@ -19,4 +19,5 @@ jobs:
           python-version: "3.11"
       - name: Compile Python sources
         run: |
-          python -m py_compile             bigimg-generate/app.py             bigimg-generate/core/generator.py             bigimg-generate/core/handoff.py             bigimg-generate/core/model_scanner.py             bigimg-generate/core/openpose.py
+          python -m py_compile             bigimg-generate/app.py             bigimg-generate/core/generator.py             bigimg-generate/core/handoff.py             bigimg-generate/core/model_scanner.py             bigimg-generate/core/openpose.py \
+            bigimg-generate/diagnostics.py
