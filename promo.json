@@ -11,16 +11,16 @@
     "watch_button_text": "立即觀看",
     "channel_button_text": "前往頻道",
     "source": "manual",
-    "video_id": "lZjZML5UtMY",
-    "title": "【感人結婚MV】原來我們早就遇見｜有些緣分，從童年就已經開始",
-    "url": "https://www.youtube.com/watch?v=lZjZML5UtMY"
+    "video_id": "Ph9Nj1u4cAc",
+    "title": "【鍾馗 Zhong Kui】人怕他的臉，鬼怕他的名字｜Dark Chinese Mythology Cinematic MV",
+    "url": "https://www.youtube.com/watch?v=Ph9Nj1u4cAc"
   },
   "contact": {
     "enabled": false,
     "title": "其他聯絡方式",
     "items": []
   },
-  "updated_at": "2026-10-04",
+  "updated_at": "2026-10-06",
   "analytics": {
     "enabled": false,
     "endpoint": "https://ai-image-upscaler-windows-analytics.vercel.app/api/track"
