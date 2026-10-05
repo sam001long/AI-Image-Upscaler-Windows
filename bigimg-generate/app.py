@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import os
-import subprocess
 import threading
 from datetime import datetime
 from pathlib import Path
@@ -12,6 +11,7 @@ from tkinter import filedialog, messagebox, ttk
 from PIL import Image, ImageTk
 
 from core.generator import GenerateRequest, LocalGenerator
+from core.handoff import launch_bigimg
 from core.model_scanner import LoraInfo, ModelInfo, VaeInfo, scan_loras, scan_models, scan_vaes
 
 
@@ -181,12 +181,26 @@ class BigIMGGenerateApp(tk.Tk):
         ttk.Label(bigimg_row, textvariable=self.bigimg_path_var).pack(side="left", fill="x", expand=True)
         ttk.Button(bigimg_row, text="指定 BigIMG.exe", command=self.choose_bigimg_exe).pack(side="right")
 
+        handoff_row = ttk.Frame(center)
+        handoff_row.pack(fill="x", pady=(0, 8))
+        ttk.Label(handoff_row, text="BigIMG 串接模式").pack(side="left")
+        self.bigimg_handoff_mode_var = tk.StringVar(
+            value=self.settings.get("bigimg_handoff_mode", "相容模式")
+        )
+        ttk.Combobox(
+            handoff_row,
+            textvariable=self.bigimg_handoff_mode_var,
+            state="readonly",
+            values=["相容模式", "CLI (--input)"],
+            width=18,
+        ).pack(side="left", padx=(8, 0))
+
         preview_box = ttk.LabelFrame(center, text="預覽")
         preview_box.pack(fill="both", expand=True)
         self.preview = ttk.Label(preview_box, anchor="center")
         self.preview.pack(fill="both", expand=True, padx=10, pady=10)
 
-        ttk.Label(center, text="已加入：LoRA / VAE / img2img / inpaint / 自動 VRAM｜BigIMG handoff 需 BigIMG 端支援 --input").pack(anchor="w", pady=(10, 0))
+        ttk.Label(center, text="BigIMG 串接：相容模式可直接啟動並選中圖片；CLI 模式待 BigIMG 本體支援 --input").pack(anchor="w", pady=(10, 0))
 
     def _apply_hardware_profile(self) -> None:
         profile = self.generator_engine.hardware_profile()
@@ -348,9 +362,13 @@ class BigIMGGenerateApp(tk.Tk):
         if not exe or not Path(exe).exists():
             return
 
+        mode = self.bigimg_handoff_mode_var.get()
+        self.settings["bigimg_handoff_mode"] = mode
+        self._save_settings()
+
         try:
-            subprocess.Popen([exe, "--input", str(self.last_output_path)])
-            self.status_var.set("已啟動 BigIMG 並傳入圖片路徑")
+            status = launch_bigimg(exe, self.last_output_path, mode)
+            self.status_var.set(status)
         except Exception as exc:
             messagebox.showerror("無法啟動 BigIMG", str(exc))
 
