@@ -15,10 +15,12 @@ from core.handoff import launch_bigimg
 from core.openpose import OpenPoseExtractor
 from core.model_scanner import (
     ControlNetInfo,
+    IPAdapterInfo,
     LoraInfo,
     ModelInfo,
     VaeInfo,
     scan_controlnets,
+    scan_ipadapters,
     scan_loras,
     scan_models,
     scan_vaes,
@@ -30,6 +32,7 @@ MODELS_DIR = APP_DIR / "models" / "checkpoints"
 LORA_DIR = APP_DIR / "models" / "lora"
 VAE_DIR = APP_DIR / "models" / "vae"
 CONTROLNET_DIR = APP_DIR / "models" / "controlnet"
+IPADAPTER_DIR = APP_DIR / "models" / "ipadapter"
 OUTPUT_DIR = APP_DIR / "outputs"
 POSE_DIR = APP_DIR / "temp" / "pose"
 SETTINGS_PATH = APP_DIR / "settings.json"
@@ -43,6 +46,8 @@ for folder in [
     VAE_DIR,
     CONTROLNET_DIR / "sd15",
     CONTROLNET_DIR / "sdxl",
+    IPADAPTER_DIR / "sd15",
+    IPADAPTER_DIR / "sdxl",
     APP_DIR / "models" / "inpaint",
     APP_DIR / "models" / "upscalers",
 ]:
@@ -61,7 +66,10 @@ class BigIMGGenerateApp(tk.Tk):
         self.loras: list[LoraInfo] = []
         self.vaes: list[VaeInfo] = []
         self.controlnets: list[ControlNetInfo] = []
+        self.ipadapters: list[IPAdapterInfo] = []
         self.openpose_extractor = OpenPoseExtractor()
+        self.identity_image: Image.Image | None = None
+        self.identity_image_path: str | None = None
         self.pose_source_image: Image.Image | None = None
         self.pose_source_path: str | None = None
         self.control_image: Image.Image | None = None
@@ -138,6 +146,20 @@ class BigIMGGenerateApp(tk.Tk):
         ttk.Label(control_row, text="控制強度").pack(side="left")
         ttk.Spinbox(control_row, from_=0.0, to=2.0, increment=0.1, textvariable=self.control_scale_var, width=7).pack(side="left", padx=(6, 8))
         ttk.Button(control_row, text="資料夾", command=lambda: os.startfile(CONTROLNET_DIR)).pack(side="left")
+
+        ttk.Label(left, text="IP-Adapter（人物一致性）").pack(anchor="w")
+        self.ipadapter_var = tk.StringVar(value="不使用")
+        self.ipadapter_combo = ttk.Combobox(left, textvariable=self.ipadapter_var, width=44, state="readonly")
+        self.ipadapter_combo.pack(fill="x", pady=(4, 3))
+        identity_row = ttk.Frame(left)
+        identity_row.pack(fill="x", pady=(0, 4))
+        self.ipadapter_scale_var = tk.DoubleVar(value=0.65)
+        ttk.Label(identity_row, text="一致性").pack(side="left")
+        ttk.Spinbox(identity_row, from_=0.0, to=1.5, increment=0.05, textvariable=self.ipadapter_scale_var, width=7).pack(side="left", padx=(6, 8))
+        ttk.Button(identity_row, text="資料夾", command=lambda: os.startfile(IPADAPTER_DIR)).pack(side="left")
+        ttk.Button(left, text="選人物參考圖", command=self.select_identity_image).pack(fill="x", pady=(0, 3))
+        self.identity_label_var = tk.StringVar(value="尚未選人物參考圖")
+        ttk.Label(left, textvariable=self.identity_label_var, wraplength=300).pack(anchor="w", pady=(0, 8))
 
         ttk.Label(left, text="姿勢來源 / 骨架圖").pack(anchor="w")
         pose_buttons = ttk.Frame(left)
@@ -241,7 +263,7 @@ class BigIMGGenerateApp(tk.Tk):
         self.preview = ttk.Label(preview_box, anchor="center")
         self.preview.pack(fill="both", expand=True, padx=10, pady=10)
 
-        ttk.Label(center, text="已加入 ControlNet / OpenPose 姿勢控制｜BigIMG 維持獨立工具，只做輕量 handoff").pack(anchor="w", pady=(10, 0))
+        ttk.Label(center, text="已加入 ControlNet / OpenPose + IP-Adapter 人物一致性｜BigIMG 維持獨立工具").pack(anchor="w", pady=(10, 0))
 
     def _apply_hardware_profile(self) -> None:
         profile = self.generator_engine.hardware_profile()
@@ -260,10 +282,12 @@ class BigIMGGenerateApp(tk.Tk):
         self.loras = scan_loras(LORA_DIR)
         self.vaes = scan_vaes(VAE_DIR)
         self.controlnets = scan_controlnets(CONTROLNET_DIR)
+        self.ipadapters = scan_ipadapters(IPADAPTER_DIR)
         self.model_combo["values"] = [m.label for m in self.models]
         self.lora_combo["values"] = ["不使用"] + [x.label for x in self.loras]
         self.vae_combo["values"] = ["使用模型內建 VAE"] + [x.label for x in self.vaes]
         self.controlnet_combo["values"] = ["尚未選擇"] + [x.label for x in self.controlnets]
+        self.ipadapter_combo["values"] = ["不使用"] + [x.label for x in self.ipadapters]
         if self.models:
             self.model_combo.current(0)
         else:
@@ -271,9 +295,10 @@ class BigIMGGenerateApp(tk.Tk):
         self.lora_combo.current(0)
         self.vae_combo.current(0)
         self.controlnet_combo.current(0)
+        self.ipadapter_combo.current(0)
         self.status_var.set(
             f"找到 {len(self.models)} 個模型、{len(self.loras)} 個 LoRA、"
-            f"{len(self.vaes)} 個 VAE、{len(self.controlnets)} 個 ControlNet"
+            f"{len(self.vaes)} 個 VAE、{len(self.controlnets)} 個 ControlNet、{len(self.ipadapters)} 個 IP-Adapter"
         )
 
     def select_input_image(self) -> None:
@@ -301,6 +326,18 @@ class BigIMGGenerateApp(tk.Tk):
             self.mask_label_var.set(Path(path).name + "｜白色區域會重繪")
         except Exception as exc:
             messagebox.showerror("無法讀取遮罩", str(exc))
+
+    def select_identity_image(self) -> None:
+        path = filedialog.askopenfilename(filetypes=[("人物參考圖", "*.png;*.jpg;*.jpeg;*.webp;*.bmp")])
+        if not path:
+            return
+        try:
+            self.identity_image = Image.open(path).convert("RGB")
+            self.identity_image_path = path
+            self.identity_label_var.set(Path(path).name)
+            self._show_preview(self.identity_image)
+        except Exception as exc:
+            messagebox.showerror("無法讀取人物參考圖", str(exc))
 
     def select_pose_source(self) -> None:
         path = filedialog.askopenfilename(filetypes=[("姿勢來源圖片", "*.png;*.jpg;*.jpeg;*.webp;*.bmp")])
@@ -374,6 +411,10 @@ class BigIMGGenerateApp(tk.Tk):
         idx = self.controlnet_combo.current()
         return None if idx <= 0 else str(self.controlnets[idx - 1].path)
 
+    def _selected_ipadapter_path(self) -> str | None:
+        idx = self.ipadapter_combo.current()
+        return None if idx <= 0 else str(self.ipadapters[idx - 1].path)
+
     def start_generate(self) -> None:
         try:
             model = self._selected_model()
@@ -405,6 +446,9 @@ class BigIMGGenerateApp(tk.Tk):
                 controlnet_path=self._selected_controlnet_path(),
                 control_image=self.control_image,
                 control_scale=float(self.control_scale_var.get()),
+                ip_adapter_path=self._selected_ipadapter_path(),
+                identity_image=self.identity_image,
+                ip_adapter_scale=float(self.ipadapter_scale_var.get()),
             )
         except Exception as exc:
             messagebox.showerror("無法開始", str(exc))
@@ -435,6 +479,9 @@ class BigIMGGenerateApp(tk.Tk):
                 "controlnet": req.controlnet_path if req.mode == "pose" else None,
                 "control_image": self.control_image_path if req.mode == "pose" else None,
                 "control_scale": req.control_scale if req.mode == "pose" else None,
+                "ip_adapter": req.ip_adapter_path,
+                "identity_image": self.identity_image_path if req.ip_adapter_path else None,
+                "ip_adapter_scale": req.ip_adapter_scale if req.ip_adapter_path else None,
                 "width": req.width,
                 "height": req.height,
                 "steps": req.steps,
