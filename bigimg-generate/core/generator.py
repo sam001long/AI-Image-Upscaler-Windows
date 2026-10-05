@@ -42,6 +42,9 @@ class GenerateRequest:
     controlnet_path: str | None = None
     control_image: Image.Image | None = None
     control_scale: float = 0.8
+    ip_adapter_path: str | None = None
+    identity_image: Image.Image | None = None
+    ip_adapter_scale: float = 0.65
 
 
 class LocalGenerator:
@@ -107,6 +110,16 @@ class LocalGenerator:
             pipe = pipe.to("cpu")
         return pipe
 
+    @staticmethod
+    def _load_ip_adapter(pipe, ip_adapter_path: str, scale: float) -> None:
+        adapter = Path(ip_adapter_path).resolve()
+        pipe.load_ip_adapter(
+            str(adapter.parent),
+            weight_name=adapter.name,
+            image_encoder_folder=None,
+        )
+        pipe.set_ip_adapter_scale(max(0.0, min(1.5, float(scale))))
+
     def load(
         self,
         model_path: str,
@@ -117,11 +130,14 @@ class LocalGenerator:
         lora_scale: float,
         vae_path: str | None,
         controlnet_path: str | None,
+        ip_adapter_path: str | None,
+        ip_adapter_scale: float,
     ) -> None:
         resolved = self._resolve_family(family, model_path)
         lora_abs = str(Path(lora_path).resolve()) if lora_path else None
         vae_abs = str(Path(vae_path).resolve()) if vae_path else None
         controlnet_abs = str(Path(controlnet_path).resolve()) if controlnet_path else None
+        ip_adapter_abs = str(Path(ip_adapter_path).resolve()) if ip_adapter_path else None
 
         key = (
             str(Path(model_path).resolve()),
@@ -132,6 +148,8 @@ class LocalGenerator:
             round(lora_scale, 3),
             vae_abs,
             controlnet_abs,
+            ip_adapter_abs,
+            round(ip_adapter_scale, 3),
         )
         if self.pipe is not None and self.loaded_key == key:
             return
@@ -176,6 +194,9 @@ class LocalGenerator:
             except Exception:
                 pass
 
+        if ip_adapter_abs:
+            self._load_ip_adapter(pipe, ip_adapter_abs, ip_adapter_scale)
+
         self.pipe = self._prepare_pipe(pipe, low_vram)
         self.loaded_key = key
 
@@ -191,6 +212,8 @@ class LocalGenerator:
                 raise ValueError("姿勢控制模式需要姿勢控制圖。")
             if not req.controlnet_path:
                 raise ValueError("姿勢控制模式需要 ControlNet 模型。")
+        if req.ip_adapter_path and req.identity_image is None:
+            raise ValueError("已選擇 IP-Adapter，但尚未選人物參考圖。")
 
         self.load(
             req.model_path,
@@ -201,6 +224,8 @@ class LocalGenerator:
             req.lora_scale,
             req.vae_path,
             req.controlnet_path,
+            req.ip_adapter_path,
+            req.ip_adapter_scale,
         )
 
         seed = torch.seed() % (2**31 - 1) if req.seed < 0 else req.seed
@@ -216,6 +241,9 @@ class LocalGenerator:
             guidance_scale=req.guidance_scale,
             generator=generator,
         )
+
+        if req.ip_adapter_path and req.identity_image is not None:
+            kwargs["ip_adapter_image"] = req.identity_image.convert("RGB")
 
         if req.mode == "img2img":
             image = req.input_image.convert("RGB").resize((req.width, req.height), Image.LANCZOS)
