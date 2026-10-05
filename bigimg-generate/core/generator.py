@@ -20,6 +20,10 @@ from diffusers import (
 )
 
 
+APP_DIR = Path(__file__).resolve().parents[1]
+CONFIG_ROOT = APP_DIR / "models" / "configs"
+
+
 @dataclass
 class GenerateRequest:
     model_path: str
@@ -95,6 +99,16 @@ class LocalGenerator:
             return "SDXL"
         return "SD1.5"
 
+    @staticmethod
+    def _config_dir_for_family(family: str) -> Path | None:
+        if family == "SD1.5":
+            path = CONFIG_ROOT / "sd15-v1-5"
+        elif family == "SDXL":
+            path = CONFIG_ROOT / "sdxl-base"
+        else:
+            return None
+        return path if path.exists() else None
+
     def _prepare_pipe(self, pipe, low_vram: bool):
         if torch.cuda.is_available():
             if low_vram:
@@ -138,6 +152,7 @@ class LocalGenerator:
         vae_abs = str(Path(vae_path).resolve()) if vae_path else None
         controlnet_abs = str(Path(controlnet_path).resolve()) if controlnet_path else None
         ip_adapter_abs = str(Path(ip_adapter_path).resolve()) if ip_adapter_path else None
+        config_dir = self._config_dir_for_family(resolved)
 
         key = (
             str(Path(model_path).resolve()),
@@ -150,6 +165,7 @@ class LocalGenerator:
             controlnet_abs,
             ip_adapter_abs,
             round(ip_adapter_scale, 3),
+            str(config_dir) if config_dir else None,
         )
         if self.pipe is not None and self.loaded_key == key:
             return
@@ -160,6 +176,9 @@ class LocalGenerator:
             "torch_dtype": dtype,
             "use_safetensors": str(model_path).lower().endswith(".safetensors"),
         }
+        if config_dir:
+            common["config"] = str(config_dir)
+            common["local_files_only"] = True
 
         if mode == "pose":
             if not controlnet_abs:
@@ -229,8 +248,8 @@ class LocalGenerator:
         )
 
         seed = torch.seed() % (2**31 - 1) if req.seed < 0 else req.seed
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        generator = torch.Generator(device=device).manual_seed(seed)
+        generator_device = "cpu" if req.low_vram else ("cuda" if torch.cuda.is_available() else "cpu")
+        generator = torch.Generator(device=generator_device).manual_seed(seed)
 
         kwargs = dict(
             prompt=req.prompt,
