@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "models": [
+    {
+      "id": "sd15-validation",
+      "name": "Stable Diffusion 1.5 Validation",
+      "kind": "checkpoint",
+      "family": "SD1.5",
+      "filename": "v1-5-pruned-emaonly.safetensors",
+      "relative_dir": "checkpoints/sd15",
+      "size_gb": 4.27,
+      "mirror_url": null,
+      "source_url": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5/resolve/main/v1-5-pruned-emaonly.safetensors?download=true",
+      "source_page": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5",
+      "license_note": "Use only where redistribution/download terms allow. BigIMG mirror is intentionally unset by default."
+    }
+  ]
+}
