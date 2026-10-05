@@ -7,6 +7,7 @@ from pathlib import Path
 import torch
 from PIL import Image
 from diffusers import (
+    AutoencoderKL,
     StableDiffusionImg2ImgPipeline,
     StableDiffusionInpaintPipeline,
     StableDiffusionPipeline,
@@ -30,6 +31,7 @@ class GenerateRequest:
     low_vram: bool = True
     lora_path: str | None = None
     lora_scale: float = 1.0
+    vae_path: str | None = None
     mode: str = "txt2img"
     input_image: Image.Image | None = None
     mask_image: Image.Image | None = None
@@ -39,7 +41,7 @@ class GenerateRequest:
 class LocalGenerator:
     def __init__(self) -> None:
         self.pipe = None
-        self.loaded_key: tuple[str, str, bool, str, str | None, float] | None = None
+        self.loaded_key = None
 
     @staticmethod
     def device_name() -> str:
@@ -99,10 +101,28 @@ class LocalGenerator:
             pipe = pipe.to("cpu")
         return pipe
 
-    def load(self, model_path: str, family: str, low_vram: bool, mode: str, lora_path: str | None, lora_scale: float) -> None:
+    def load(
+        self,
+        model_path: str,
+        family: str,
+        low_vram: bool,
+        mode: str,
+        lora_path: str | None,
+        lora_scale: float,
+        vae_path: str | None,
+    ) -> None:
         resolved = self._resolve_family(family, model_path)
         lora_abs = str(Path(lora_path).resolve()) if lora_path else None
-        key = (str(Path(model_path).resolve()), resolved, low_vram, mode, lora_abs, round(lora_scale, 3))
+        vae_abs = str(Path(vae_path).resolve()) if vae_path else None
+        key = (
+            str(Path(model_path).resolve()),
+            resolved,
+            low_vram,
+            mode,
+            lora_abs,
+            round(lora_scale, 3),
+            vae_abs,
+        )
         if self.pipe is not None and self.loaded_key == key:
             return
 
@@ -122,6 +142,13 @@ class LocalGenerator:
 
         pipe = cls.from_single_file(model_path, **common)
 
+        if vae_abs:
+            pipe.vae = AutoencoderKL.from_single_file(
+                vae_abs,
+                torch_dtype=dtype,
+                use_safetensors=vae_abs.lower().endswith(".safetensors"),
+            )
+
         if lora_abs:
             pipe.load_lora_weights(lora_abs, adapter_name="user_lora")
             try:
@@ -140,7 +167,15 @@ class LocalGenerator:
         if req.mode == "inpaint" and req.mask_image is None:
             raise ValueError("局部重繪模式需要遮罩圖。白色區域會被重新生成。")
 
-        self.load(req.model_path, req.family, req.low_vram, req.mode, req.lora_path, req.lora_scale)
+        self.load(
+            req.model_path,
+            req.family,
+            req.low_vram,
+            req.mode,
+            req.lora_path,
+            req.lora_scale,
+            req.vae_path,
+        )
 
         seed = torch.seed() % (2**31 - 1) if req.seed < 0 else req.seed
         device = "cuda" if torch.cuda.is_available() else "cpu"
