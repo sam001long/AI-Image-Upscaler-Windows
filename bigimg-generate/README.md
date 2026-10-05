@@ -8,10 +8,12 @@ Windows 本機 AI 生圖原型。
 - 文字生圖
 - 參考圖生圖（img2img）
 - 局部重繪（inpaint，白色遮罩區域重繪）
-- LoRA 掃描與單一 LoRA 載入
+- LoRA 掃描、載入與強度調整
+- VAE 掃描與切換
 - 自動硬體 / VRAM 建議設定
 - 低 VRAM 模式
 - PNG + JSON metadata 輸出
+- BigIMG handoff 基礎
 
 ## 快速開始
 
@@ -21,8 +23,9 @@ Windows 本機 AI 生圖原型。
    - `models/checkpoints/sdxl/`
    - `models/checkpoints/sd15/`
 4. 可選：將 LoRA 放進 `models/lora/`。
-5. 執行 `run.bat`。
-6. 選模式、模型並生成。
+5. 可選：將 VAE 放進 `models/vae/`。
+6. 執行 `run.bat`。
+7. 選模式、模型並生成。
 
 > 第一次安裝 PyTorch / Diffusers 套件會需要網路。模型推論本身可在本機執行。
 
@@ -32,7 +35,10 @@ MVP 優先支援：
 - SDXL checkpoint (`.safetensors`)
 - SD1.5 checkpoint (`.safetensors`)
 - LoRA (`.safetensors`)
+- VAE (`.safetensors`)
 - `.ckpt` 會列出，但不保證所有模型可載入
+
+第三方模型與 VAE 是否相容，仍取決於模型本身架構。
 
 ## 自動 VRAM profile
 
@@ -54,9 +60,17 @@ MVP 優先支援：
 
 後續可再加入直接在圖片上塗遮罩的畫筆介面。
 
+## BigIMG handoff
+
+Generate 端現在可以：
+- 指定本機 BigIMG.exe
+- 記住 exe 路徑
+- 對最新生成圖片啟動：`BigIMG.exe --input <image path>`
+
+目前 repository 沒有 BigIMG 主程式的 CLI 實作可驗證，所以這只是 handoff 合約的 Generate 端。要做到真正一鍵載入圖片，BigIMG 端還需要正式支援 `--input` 參數。
+
 ## 待完成
-- BigIMG Upscale 串接
-- VAE 切換
+- BigIMG 主程式 `--input` 接收端
 - ControlNet / pose
 - 直接畫遮罩
 - 打包 EXE
