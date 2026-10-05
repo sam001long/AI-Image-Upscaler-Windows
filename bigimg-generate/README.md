@@ -150,3 +150,31 @@ BigIMG Generate 與 BigIMG 維持兩個獨立工具。
 6. 基本生圖成功後，再逐項打開附加功能。
 
 若 diagnostics 顯示 `CUDA available: False`，程式仍可走 CPU，但速度會非常慢；這時先處理 PyTorch / NVIDIA driver，不應直接測大型模型。
+
+
+## 第一張實際生圖驗收
+
+環境檢查通過後：
+
+1. 放入一個 SD1.5 或 SDXL checkpoint。
+2. 雙擊 `first_image_test.bat`。
+3. 測試只跑最基本文字生圖：
+   - 512x512
+   - 6 steps
+   - 固定 seed
+   - 不使用 LoRA
+   - 不使用額外 VAE
+   - 不使用 ControlNet
+   - 不使用 IP-Adapter
+4. 成功時會輸出到：
+   `outputs/validation/first_image_seed12345.png`
+
+若失敗，腳本會盡量分類：
+- GPU 顯存不足
+- CUDA / NVIDIA driver 問題
+- checkpoint / safetensors 問題
+- Diffusers config / Hub cache 問題
+
+### 單檔模型的注意事項
+
+Diffusers 的 `from_single_file()` 可以直接讀本機 `.ckpt` / `.safetensors`，但某些單檔模型第一次載入時仍可能需要從 Hugging Face 取得對應設定並寫入快取。若未來要做到完全離線 Portable，會再把必要 config/cache 一併打包。
