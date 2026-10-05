@@ -22,7 +22,7 @@
   },
   "updated_at": "2026-10-04",
   "analytics": {
-    "enabled": true,
+    "enabled": false,
     "endpoint": "https://ai-image-upscaler-windows-analytics.vercel.app/api/track"
   }
 }
