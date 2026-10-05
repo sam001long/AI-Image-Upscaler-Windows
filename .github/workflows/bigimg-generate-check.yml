@@ -1,0 +1,22 @@
+name: BigIMG Generate check
+
+on:
+  push:
+    branches:
+      - feature/bigimg-generate-mvp
+  pull_request:
+    paths:
+      - "bigimg-generate/**"
+      - ".github/workflows/bigimg-generate-check.yml"
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile Python sources
+        run: |
+          python -m py_compile             bigimg-generate/app.py             bigimg-generate/core/generator.py             bigimg-generate/core/model_scanner.py
