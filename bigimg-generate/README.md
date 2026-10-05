@@ -23,6 +23,9 @@ Windows 本機 AI 生圖工具。BigIMG Generate 與 BigIMG 圖片放大工具�
 
 1. 安裝 Python 3.11 x64。
 2. 執行 `setup.bat`。
+   - 有 NVIDIA 顯卡：優先安裝官方 PyTorch CUDA 12.6 build。
+   - 沒有 NVIDIA：安裝 CPU build。
+   - 安裝完會自動執行 `diagnostics.py` 檢查 PyTorch、CUDA 與必要套件。
 3. 將主模型放進：
    - `models/checkpoints/sdxl/`
    - `models/checkpoints/sd15/`
@@ -32,9 +35,10 @@ Windows 本機 AI 生圖工具。BigIMG Generate 與 BigIMG 圖片放大工具�
    - `models/controlnet/sd15/`
    - `models/controlnet/sdxl/`
 7. IP-Adapter 權重放進 `models/ipadapter/sd15/` 或 `models/ipadapter/sdxl/`。
-8. 執行 `run.bat`。
+8. 可先執行 `smoke_test.bat` 看完整環境報告。
+9. 執行 `run.bat`。啟動前會先做快速環境檢查。
 
-> 第一次安裝 Python 套件需要網路。OpenPose 自動抽骨架第一次使用時，還需要下載 OpenPose 偵測權重；下載後會使用本機快取。若要完全離線，也可以直接載入已經準備好的 OpenPose 骨架圖。
+> 第一次安裝 Python 套件需要網路。PyTorch 目前固定使用 2.13.0；Windows NVIDIA 路徑使用官方 CUDA 12.6 wheel。OpenPose 自動抽骨架第一次使用時，還需要下載 OpenPose 偵測權重；下載後會使用本機快取。若要完全離線，也可以直接載入已經準備好的 OpenPose 骨架圖。
 
 ## 模型格式
 
@@ -131,3 +135,18 @@ BigIMG Generate 與 BigIMG 維持兩個獨立工具。
 - 多 ControlNet
 - 更進階的人物參考一致性
 - Windows EXE 打包與本機 GPU 實測
+
+
+## Windows 驗證流程
+
+目前 Draft PR 已能做「環境層」驗證，但真正生圖仍需要本機模型。
+
+建議實機順序：
+1. 執行 `setup.bat`。
+2. 確認 diagnostics 顯示 `CUDA available: True`（NVIDIA 使用者）。
+3. 執行 `smoke_test.bat`。
+4. 先只放一個 SD1.5 或 SDXL checkpoint。
+5. 第一輪只測文字生圖，不開 LoRA / VAE / ControlNet / IP-Adapter。
+6. 基本生圖成功後，再逐項打開附加功能。
+
+若 diagnostics 顯示 `CUDA available: False`，程式仍可走 CPU，但速度會非常慢；這時先處理 PyTorch / NVIDIA driver，不應直接測大型模型。
