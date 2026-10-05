@@ -7,10 +7,10 @@ echo BigIMG Generate - Windows Setup
 echo ==========================================
 echo.
 
-where py >nul 2>nul
+py -3.11 -V >nul 2>nul
 if errorlevel 1 (
-  echo [ERROR] Python launcher not found.
-  echo Please install Python 3.11 x64 first.
+  echo [ERROR] Python 3.11 x64 not found.
+  echo Run START_TEST.bat so it can try automatic installation.
   pause
   exit /b 1
 )
@@ -19,8 +19,7 @@ if not exist .venv (
   echo [1/5] Creating Python 3.11 environment...
   py -3.11 -m venv .venv
   if errorlevel 1 (
-    echo [ERROR] Python 3.11 x64 not found.
-    echo Install Python 3.11 x64 and try again.
+    echo [ERROR] Could not create Python 3.11 environment.
     pause
     exit /b 1
   )
