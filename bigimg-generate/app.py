@@ -12,22 +12,37 @@ from PIL import Image, ImageTk
 
 from core.generator import GenerateRequest, LocalGenerator
 from core.handoff import launch_bigimg
-from core.model_scanner import LoraInfo, ModelInfo, VaeInfo, scan_loras, scan_models, scan_vaes
+from core.openpose import OpenPoseExtractor
+from core.model_scanner import (
+    ControlNetInfo,
+    LoraInfo,
+    ModelInfo,
+    VaeInfo,
+    scan_controlnets,
+    scan_loras,
+    scan_models,
+    scan_vaes,
+)
 
 
 APP_DIR = Path(__file__).resolve().parent
 MODELS_DIR = APP_DIR / "models" / "checkpoints"
 LORA_DIR = APP_DIR / "models" / "lora"
 VAE_DIR = APP_DIR / "models" / "vae"
+CONTROLNET_DIR = APP_DIR / "models" / "controlnet"
 OUTPUT_DIR = APP_DIR / "outputs"
+POSE_DIR = APP_DIR / "temp" / "pose"
 SETTINGS_PATH = APP_DIR / "settings.json"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+POSE_DIR.mkdir(parents=True, exist_ok=True)
 
 for folder in [
     MODELS_DIR / "sdxl",
     MODELS_DIR / "sd15",
     LORA_DIR,
     VAE_DIR,
+    CONTROLNET_DIR / "sd15",
+    CONTROLNET_DIR / "sdxl",
     APP_DIR / "models" / "inpaint",
     APP_DIR / "models" / "upscalers",
 ]:
@@ -45,6 +60,12 @@ class BigIMGGenerateApp(tk.Tk):
         self.models: list[ModelInfo] = []
         self.loras: list[LoraInfo] = []
         self.vaes: list[VaeInfo] = []
+        self.controlnets: list[ControlNetInfo] = []
+        self.openpose_extractor = OpenPoseExtractor()
+        self.pose_source_image: Image.Image | None = None
+        self.pose_source_path: str | None = None
+        self.control_image: Image.Image | None = None
+        self.control_image_path: str | None = None
         self.input_image: Image.Image | None = None
         self.input_image_path: str | None = None
         self.mask_image: Image.Image | None = None
@@ -81,7 +102,7 @@ class BigIMGGenerateApp(tk.Tk):
         ttk.Label(left, text="模式").pack(anchor="w")
         self.mode_var = tk.StringVar(value="文字生圖")
         ttk.Combobox(left, textvariable=self.mode_var, state="readonly",
-                     values=["文字生圖", "參考圖生圖", "局部重繪"], width=24).pack(fill="x", pady=(4, 10))
+                     values=["文字生圖", "參考圖生圖", "局部重繪", "姿勢控制"], width=24).pack(fill="x", pady=(4, 10))
 
         ttk.Label(left, text="主模型").pack(anchor="w")
         self.model_var = tk.StringVar()
@@ -106,6 +127,26 @@ class BigIMGGenerateApp(tk.Tk):
         self.vae_combo = ttk.Combobox(left, textvariable=self.vae_var, width=44, state="readonly")
         self.vae_combo.pack(fill="x", pady=(4, 3))
         ttk.Button(left, text="開啟 VAE 資料夾", command=lambda: os.startfile(VAE_DIR)).pack(fill="x", pady=(0, 8))
+
+        ttk.Label(left, text="ControlNet（姿勢控制）").pack(anchor="w")
+        self.controlnet_var = tk.StringVar(value="尚未選擇")
+        self.controlnet_combo = ttk.Combobox(left, textvariable=self.controlnet_var, width=44, state="readonly")
+        self.controlnet_combo.pack(fill="x", pady=(4, 3))
+        control_row = ttk.Frame(left)
+        control_row.pack(fill="x", pady=(0, 7))
+        self.control_scale_var = tk.DoubleVar(value=0.8)
+        ttk.Label(control_row, text="控制強度").pack(side="left")
+        ttk.Spinbox(control_row, from_=0.0, to=2.0, increment=0.1, textvariable=self.control_scale_var, width=7).pack(side="left", padx=(6, 8))
+        ttk.Button(control_row, text="資料夾", command=lambda: os.startfile(CONTROLNET_DIR)).pack(side="left")
+
+        ttk.Label(left, text="姿勢來源 / 骨架圖").pack(anchor="w")
+        pose_buttons = ttk.Frame(left)
+        pose_buttons.pack(fill="x", pady=(4, 3))
+        ttk.Button(pose_buttons, text="選姿勢來源圖", command=self.select_pose_source).pack(side="left", fill="x", expand=True)
+        ttk.Button(pose_buttons, text="直接選骨架圖", command=self.select_control_image).pack(side="left", fill="x", expand=True, padx=(5, 0))
+        ttk.Button(left, text="自動抽 OpenPose 骨架", command=self.extract_openpose).pack(fill="x", pady=(0, 3))
+        self.pose_label_var = tk.StringVar(value="尚未選擇姿勢圖")
+        ttk.Label(left, textvariable=self.pose_label_var, wraplength=300).pack(anchor="w", pady=(0, 8))
 
         ttk.Label(left, text="參考圖").pack(anchor="w")
         ttk.Button(left, text="選擇參考圖", command=self.select_input_image).pack(fill="x", pady=(4, 3))
@@ -200,7 +241,7 @@ class BigIMGGenerateApp(tk.Tk):
         self.preview = ttk.Label(preview_box, anchor="center")
         self.preview.pack(fill="both", expand=True, padx=10, pady=10)
 
-        ttk.Label(center, text="BigIMG 串接：相容模式可直接啟動並選中圖片；CLI 模式待 BigIMG 本體支援 --input").pack(anchor="w", pady=(10, 0))
+        ttk.Label(center, text="已加入 ControlNet / OpenPose 姿勢控制｜BigIMG 維持獨立工具，只做輕量 handoff").pack(anchor="w", pady=(10, 0))
 
     def _apply_hardware_profile(self) -> None:
         profile = self.generator_engine.hardware_profile()
@@ -218,16 +259,22 @@ class BigIMGGenerateApp(tk.Tk):
         self.models = scan_models(MODELS_DIR)
         self.loras = scan_loras(LORA_DIR)
         self.vaes = scan_vaes(VAE_DIR)
+        self.controlnets = scan_controlnets(CONTROLNET_DIR)
         self.model_combo["values"] = [m.label for m in self.models]
         self.lora_combo["values"] = ["不使用"] + [x.label for x in self.loras]
         self.vae_combo["values"] = ["使用模型內建 VAE"] + [x.label for x in self.vaes]
+        self.controlnet_combo["values"] = ["尚未選擇"] + [x.label for x in self.controlnets]
         if self.models:
             self.model_combo.current(0)
         else:
             self.model_var.set("")
         self.lora_combo.current(0)
         self.vae_combo.current(0)
-        self.status_var.set(f"找到 {len(self.models)} 個模型、{len(self.loras)} 個 LoRA、{len(self.vaes)} 個 VAE")
+        self.controlnet_combo.current(0)
+        self.status_var.set(
+            f"找到 {len(self.models)} 個模型、{len(self.loras)} 個 LoRA、"
+            f"{len(self.vaes)} 個 VAE、{len(self.controlnets)} 個 ControlNet"
+        )
 
     def select_input_image(self) -> None:
         path = filedialog.askopenfilename(filetypes=[("圖片", "*.png;*.jpg;*.jpeg;*.webp;*.bmp")])
@@ -255,6 +302,60 @@ class BigIMGGenerateApp(tk.Tk):
         except Exception as exc:
             messagebox.showerror("無法讀取遮罩", str(exc))
 
+    def select_pose_source(self) -> None:
+        path = filedialog.askopenfilename(filetypes=[("姿勢來源圖片", "*.png;*.jpg;*.jpeg;*.webp;*.bmp")])
+        if not path:
+            return
+        try:
+            self.pose_source_image = Image.open(path).convert("RGB")
+            self.pose_source_path = path
+            self.pose_label_var.set("姿勢來源：" + Path(path).name)
+            self._show_preview(self.pose_source_image)
+        except Exception as exc:
+            messagebox.showerror("無法讀取姿勢來源", str(exc))
+
+    def select_control_image(self) -> None:
+        path = filedialog.askopenfilename(filetypes=[("OpenPose 骨架圖", "*.png;*.jpg;*.jpeg;*.webp;*.bmp")])
+        if not path:
+            return
+        try:
+            self.control_image = Image.open(path).convert("RGB")
+            self.control_image_path = path
+            self.pose_label_var.set("骨架圖：" + Path(path).name)
+            self._show_preview(self.control_image)
+        except Exception as exc:
+            messagebox.showerror("無法讀取骨架圖", str(exc))
+
+    def extract_openpose(self) -> None:
+        if self.pose_source_image is None:
+            messagebox.showinfo("尚無姿勢來源", "請先選擇一張人物姿勢來源圖。")
+            return
+        self.status_var.set("正在抽取 OpenPose 骨架…第一次使用可能需下載偵測模型")
+        threading.Thread(target=self._worker_extract_openpose, daemon=True).start()
+
+    def _worker_extract_openpose(self) -> None:
+        try:
+            pose = self.openpose_extractor.extract(self.pose_source_image)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            path = POSE_DIR / f"openpose_{timestamp}.png"
+            pose.save(path)
+            self.control_image = pose
+            self.control_image_path = str(path)
+            self.after(0, self._show_pose_result, pose, path)
+        except Exception as exc:
+            self.after(0, self._show_error, "OpenPose 抽取失敗：" + str(exc))
+
+    def _show_pose_result(self, pose: Image.Image, path: Path) -> None:
+        self.pose_label_var.set("OpenPose：" + path.name)
+        self._show_preview(pose)
+        self.status_var.set("OpenPose 骨架已完成")
+
+    def _show_preview(self, image: Image.Image) -> None:
+        preview = image.copy()
+        preview.thumbnail((760, 470))
+        self.preview_photo = ImageTk.PhotoImage(preview)
+        self.preview.configure(image=self.preview_photo)
+
     def _selected_model(self) -> ModelInfo:
         idx = self.model_combo.current()
         if idx < 0 or idx >= len(self.models):
@@ -269,10 +370,19 @@ class BigIMGGenerateApp(tk.Tk):
         idx = self.vae_combo.current()
         return None if idx <= 0 else str(self.vaes[idx - 1].path)
 
+    def _selected_controlnet_path(self) -> str | None:
+        idx = self.controlnet_combo.current()
+        return None if idx <= 0 else str(self.controlnets[idx - 1].path)
+
     def start_generate(self) -> None:
         try:
             model = self._selected_model()
-            mode_map = {"文字生圖": "txt2img", "參考圖生圖": "img2img", "局部重繪": "inpaint"}
+            mode_map = {
+                "文字生圖": "txt2img",
+                "參考圖生圖": "img2img",
+                "局部重繪": "inpaint",
+                "姿勢控制": "pose",
+            }
             mode = mode_map[self.mode_var.get()]
             req = GenerateRequest(
                 model_path=str(model.path),
@@ -292,6 +402,9 @@ class BigIMGGenerateApp(tk.Tk):
                 input_image=self.input_image,
                 mask_image=self.mask_image,
                 strength=1.0 - float(self.preserve_var.get()),
+                controlnet_path=self._selected_controlnet_path(),
+                control_image=self.control_image,
+                control_scale=float(self.control_scale_var.get()),
             )
         except Exception as exc:
             messagebox.showerror("無法開始", str(exc))
@@ -319,6 +432,9 @@ class BigIMGGenerateApp(tk.Tk):
                 "input_image": self.input_image_path if req.mode in {"img2img", "inpaint"} else None,
                 "mask_image": self.mask_image_path if req.mode == "inpaint" else None,
                 "preserve": 1.0 - req.strength if req.mode in {"img2img", "inpaint"} else None,
+                "controlnet": req.controlnet_path if req.mode == "pose" else None,
+                "control_image": self.control_image_path if req.mode == "pose" else None,
+                "control_scale": req.control_scale if req.mode == "pose" else None,
                 "width": req.width,
                 "height": req.height,
                 "steps": req.steps,
