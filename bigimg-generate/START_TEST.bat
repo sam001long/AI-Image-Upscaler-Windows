@@ -17,14 +17,37 @@ echo.
 echo The validation model is about 4.27 GB.
 echo.
 
-where py >nul 2>nul
+call :ensure_python
+if errorlevel 1 goto :ensure_python
+py -3.11 -V >nul 2>nul
+if not errorlevel 1 exit /b 0
+
+echo [INFO] Python 3.11 x64 was not found.
+where winget >nul 2>nul
 if errorlevel 1 (
-  echo [STOP] Python 3.11 x64 is not installed.
-  echo Install Python 3.11 x64 first, then run this file again.
-  echo.
-  pause
-  exit /b 2
+  echo [STOP] Windows Package Manager ^(winget^) is not available.
+  echo Install Python 3.11 x64 manually, then run START_TEST.bat again.
+  exit /b 1
 )
+
+echo [INFO] Installing Python 3.11 x64 automatically...
+winget install --id Python.Python.3.11 -e --scope user --accept-package-agreements --accept-source-agreements
+if errorlevel 1 (
+  echo [STOP] Automatic Python installation failed.
+  echo Install Python 3.11 x64 manually, then run START_TEST.bat again.
+  exit /b 1
+)
+
+echo [INFO] Verifying Python 3.11...
+py -3.11 -V
+if errorlevel 1 (
+  echo [STOP] Python was installed but is not visible yet.
+  echo Close this window, then double-click START_TEST.bat again.
+  exit /b 1
+)
+exit /b 0
+
+:failed
 
 if not exist .venv\Scripts\python.exe (
   echo [STEP 1] Environment not found. Running setup...
