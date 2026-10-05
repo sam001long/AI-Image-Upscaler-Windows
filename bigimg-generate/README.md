@@ -198,3 +198,30 @@ Diffusers 的 `from_single_file()` 可以直接讀本機 `.ckpt` / `.safetensors
 
 設定快取會放到：
 `models/configs/sd15-v1-5/`
+
+
+## 模型中心
+
+主程式現在有「模型中心」入口，設計成三種來源並存：
+
+- BigIMG 推薦 / 鏡像：catalog 的 `mirror_url`
+- 原始來源：catalog 的 `source_url` / `source_page`
+- 本機加入：直接把使用者已有的模型複製進 BigIMG Generate 的 models 資料夾
+
+模型目錄位於：
+`config/model_catalog.json`
+
+每個模型可設定：
+- 名稱
+- 類型
+- SD1.5 / SDXL 家族
+- 檔名與目的資料夾
+- 預估大小
+- BigIMG 鏡像網址
+- 原始下載網址
+- 原始來源頁
+- 授權備註
+
+預設 catalog 對大型模型先不設定 BigIMG 鏡像，避免在授權未確認前重新託管第三方模型。日後若某個模型允許再散布，只需填入 `mirror_url`，UI 的「下載（優先 BigIMG 鏡像）」就會自動優先使用你的來源；沒有鏡像時則回到原始來源。
+
+這個設計之後也可以把 Google Drive 換成正式 CDN / Object Storage，而不需要改主程式。
