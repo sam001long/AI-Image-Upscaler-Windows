@@ -62,15 +62,24 @@ MVP 優先支援：
 
 ## BigIMG handoff
 
-Generate 端現在可以：
+Generate 端現在有兩種串接模式：
+
+### 相容模式（預設）
 - 指定本機 BigIMG.exe
 - 記住 exe 路徑
-- 對最新生成圖片啟動：`BigIMG.exe --input <image path>`
+- 啟動 BigIMG
+- 自動打開檔案總管並選中最新生成圖
+- 同時寫入暫存 handoff manifest：
+  `%TEMP%\\BigIMGGenerate\\handoff.json`
 
-目前 repository 沒有 BigIMG 主程式的 CLI 實作可驗證，所以這只是 handoff 合約的 Generate 端。要做到真正一鍵載入圖片，BigIMG 端還需要正式支援 `--input` 參數。
+這個模式不假設 BigIMG 本體已支援任何 CLI 參數，因此目前 Windows 版本就能安全使用。
+
+### CLI (--input)
+- 啟動：`BigIMG.exe --input <image path>`
+- 等 BigIMG 本體原始碼可修改後，再補正式接收端，就能真正做到「生成後直接載入 BigIMG」。
 
 ## 待完成
-- BigIMG 主程式 `--input` 接收端
+- BigIMG 主程式 `--input` / handoff manifest 接收端
 - ControlNet / pose
 - 直接畫遮罩
 - 打包 EXE
