@@ -1,0 +1,9 @@
+{
+  "name": "bigimg-analytics",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@vercel/analytics": "^1.5.0"
+  }
+}
