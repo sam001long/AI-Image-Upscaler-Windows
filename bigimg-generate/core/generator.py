@@ -8,9 +8,12 @@ import torch
 from PIL import Image
 from diffusers import (
     AutoencoderKL,
+    ControlNetModel,
+    StableDiffusionControlNetPipeline,
     StableDiffusionImg2ImgPipeline,
     StableDiffusionInpaintPipeline,
     StableDiffusionPipeline,
+    StableDiffusionXLControlNetPipeline,
     StableDiffusionXLImg2ImgPipeline,
     StableDiffusionXLInpaintPipeline,
     StableDiffusionXLPipeline,
@@ -36,6 +39,9 @@ class GenerateRequest:
     input_image: Image.Image | None = None
     mask_image: Image.Image | None = None
     strength: float = 0.45
+    controlnet_path: str | None = None
+    control_image: Image.Image | None = None
+    control_scale: float = 0.8
 
 
 class LocalGenerator:
@@ -110,10 +116,13 @@ class LocalGenerator:
         lora_path: str | None,
         lora_scale: float,
         vae_path: str | None,
+        controlnet_path: str | None,
     ) -> None:
         resolved = self._resolve_family(family, model_path)
         lora_abs = str(Path(lora_path).resolve()) if lora_path else None
         vae_abs = str(Path(vae_path).resolve()) if vae_path else None
+        controlnet_abs = str(Path(controlnet_path).resolve()) if controlnet_path else None
+
         key = (
             str(Path(model_path).resolve()),
             resolved,
@@ -122,6 +131,7 @@ class LocalGenerator:
             lora_abs,
             round(lora_scale, 3),
             vae_abs,
+            controlnet_abs,
         )
         if self.pipe is not None and self.loaded_key == key:
             return
@@ -133,14 +143,24 @@ class LocalGenerator:
             "use_safetensors": str(model_path).lower().endswith(".safetensors"),
         }
 
-        if mode == "img2img":
+        if mode == "pose":
+            if not controlnet_abs:
+                raise ValueError("姿勢控制模式需要先選擇 ControlNet 模型。")
+            controlnet = ControlNetModel.from_single_file(
+                controlnet_abs,
+                torch_dtype=dtype,
+            )
+            cls = StableDiffusionXLControlNetPipeline if resolved == "SDXL" else StableDiffusionControlNetPipeline
+            pipe = cls.from_single_file(model_path, controlnet=controlnet, **common)
+        elif mode == "img2img":
             cls = StableDiffusionXLImg2ImgPipeline if resolved == "SDXL" else StableDiffusionImg2ImgPipeline
+            pipe = cls.from_single_file(model_path, **common)
         elif mode == "inpaint":
             cls = StableDiffusionXLInpaintPipeline if resolved == "SDXL" else StableDiffusionInpaintPipeline
+            pipe = cls.from_single_file(model_path, **common)
         else:
             cls = StableDiffusionXLPipeline if resolved == "SDXL" else StableDiffusionPipeline
-
-        pipe = cls.from_single_file(model_path, **common)
+            pipe = cls.from_single_file(model_path, **common)
 
         if vae_abs:
             pipe.vae = AutoencoderKL.from_single_file(
@@ -166,6 +186,11 @@ class LocalGenerator:
             raise ValueError("這個模式需要先選擇參考圖。")
         if req.mode == "inpaint" and req.mask_image is None:
             raise ValueError("局部重繪模式需要遮罩圖。白色區域會被重新生成。")
+        if req.mode == "pose":
+            if req.control_image is None:
+                raise ValueError("姿勢控制模式需要姿勢控制圖。")
+            if not req.controlnet_path:
+                raise ValueError("姿勢控制模式需要 ControlNet 模型。")
 
         self.load(
             req.model_path,
@@ -175,6 +200,7 @@ class LocalGenerator:
             req.lora_path,
             req.lora_scale,
             req.vae_path,
+            req.controlnet_path,
         )
 
         seed = torch.seed() % (2**31 - 1) if req.seed < 0 else req.seed
@@ -201,6 +227,10 @@ class LocalGenerator:
             kwargs["image"] = image
             kwargs["mask_image"] = mask
             kwargs["strength"] = max(0.05, min(0.95, float(req.strength)))
+        elif req.mode == "pose":
+            control = req.control_image.convert("RGB").resize((req.width, req.height), Image.LANCZOS)
+            kwargs["image"] = control
+            kwargs["controlnet_conditioning_scale"] = max(0.0, min(2.0, float(req.control_scale)))
 
         result = self.pipe(**kwargs)
         return result.images[0], int(seed)
