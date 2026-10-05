@@ -13,6 +13,7 @@ from PIL import Image, ImageTk
 from core.generator import GenerateRequest, LocalGenerator
 from core.handoff import launch_bigimg
 from core.openpose import OpenPoseExtractor
+from model_center import ModelCenter
 from core.model_scanner import (
     ControlNetInfo,
     IPAdapterInfo,
@@ -117,6 +118,7 @@ class BigIMGGenerateApp(tk.Tk):
         self.model_combo = ttk.Combobox(left, textvariable=self.model_var, width=44, state="readonly")
         self.model_combo.pack(fill="x", pady=(4, 6))
         ttk.Button(left, text="重新掃描模型 / LoRA / VAE", command=self.refresh_models).pack(fill="x")
+        ttk.Button(left, text="模型中心", command=self.open_model_center).pack(fill="x", pady=(5, 0))
         ttk.Button(left, text="開啟模型資料夾", command=lambda: os.startfile(MODELS_DIR)).pack(fill="x", pady=(5, 10))
 
         ttk.Label(left, text="LoRA（可不選）").pack(anchor="w")
@@ -264,6 +266,9 @@ class BigIMGGenerateApp(tk.Tk):
         self.preview.pack(fill="both", expand=True, padx=10, pady=10)
 
         ttk.Label(center, text="已加入 ControlNet / OpenPose + IP-Adapter 人物一致性｜BigIMG 維持獨立工具").pack(anchor="w", pady=(10, 0))
+
+    def open_model_center(self) -> None:
+        ModelCenter(self, on_changed=self.refresh_models)
 
     def _apply_hardware_profile(self) -> None:
         profile = self.generator_engine.hardware_profile()
