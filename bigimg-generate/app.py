@@ -35,20 +35,22 @@ class BigIMGGenerateApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title("BigIMG Generate — MVP")
-        self.geometry("1260x800")
-        self.minsize(1060, 700)
+        self.geometry("1280x840")
+        self.minsize(1080, 720)
 
         self.generator_engine = LocalGenerator()
         self.models: list[ModelInfo] = []
         self.loras: list[LoraInfo] = []
         self.input_image: Image.Image | None = None
         self.input_image_path: str | None = None
+        self.mask_image: Image.Image | None = None
+        self.mask_image_path: str | None = None
         self.preview_photo = None
         self.last_image: Image.Image | None = None
 
         self._build_ui()
         self.refresh_models()
-        self._refresh_hardware_status()
+        self._apply_hardware_profile()
 
     def _build_ui(self) -> None:
         outer = ttk.Frame(self, padding=14)
@@ -63,16 +65,13 @@ class BigIMGGenerateApp(tk.Tk):
 
         ttk.Label(left, text="模式").pack(anchor="w")
         self.mode_var = tk.StringVar(value="文字生圖")
-        ttk.Combobox(
-            left, textvariable=self.mode_var, state="readonly",
-            values=["文字生圖", "參考圖生圖"], width=24
-        ).pack(fill="x", pady=(4, 10))
+        ttk.Combobox(left, textvariable=self.mode_var, state="readonly",
+                     values=["文字生圖", "參考圖生圖", "局部重繪"], width=24).pack(fill="x", pady=(4, 10))
 
         ttk.Label(left, text="主模型").pack(anchor="w")
         self.model_var = tk.StringVar()
         self.model_combo = ttk.Combobox(left, textvariable=self.model_var, width=44, state="readonly")
         self.model_combo.pack(fill="x", pady=(4, 6))
-
         ttk.Button(left, text="重新掃描模型 / LoRA", command=self.refresh_models).pack(fill="x")
         ttk.Button(left, text="開啟模型資料夾", command=lambda: os.startfile(MODELS_DIR)).pack(fill="x", pady=(5, 10))
 
@@ -81,7 +80,6 @@ class BigIMGGenerateApp(tk.Tk):
         self.lora_combo = ttk.Combobox(left, textvariable=self.lora_var, width=44, state="readonly")
         self.lora_combo.pack(fill="x", pady=(4, 4))
         ttk.Button(left, text="開啟 LoRA 資料夾", command=lambda: os.startfile(LORA_DIR)).pack(fill="x", pady=(0, 6))
-
         ttk.Label(left, text="LoRA 強度").pack(anchor="w")
         self.lora_scale_var = tk.DoubleVar(value=1.0)
         ttk.Spinbox(left, from_=0.1, to=2.0, increment=0.1, textvariable=self.lora_scale_var, width=10).pack(anchor="w", pady=(4, 10))
@@ -89,7 +87,12 @@ class BigIMGGenerateApp(tk.Tk):
         ttk.Label(left, text="參考圖").pack(anchor="w")
         ttk.Button(left, text="選擇參考圖", command=self.select_input_image).pack(fill="x", pady=(4, 3))
         self.input_label_var = tk.StringVar(value="尚未選擇")
-        ttk.Label(left, textvariable=self.input_label_var, wraplength=300).pack(anchor="w", pady=(0, 6))
+        ttk.Label(left, textvariable=self.input_label_var, wraplength=300).pack(anchor="w", pady=(0, 5))
+
+        ttk.Label(left, text="遮罩圖（局部重繪）").pack(anchor="w")
+        ttk.Button(left, text="選擇遮罩圖", command=self.select_mask_image).pack(fill="x", pady=(4, 3))
+        self.mask_label_var = tk.StringVar(value="尚未選擇｜白色區域會重繪")
+        ttk.Label(left, textvariable=self.mask_label_var, wraplength=300).pack(anchor="w", pady=(0, 6))
 
         ttk.Label(left, text="保留原圖程度").pack(anchor="w")
         self.preserve_var = tk.DoubleVar(value=0.55)
@@ -125,6 +128,9 @@ class BigIMGGenerateApp(tk.Tk):
         self.seed_var = tk.IntVar(value=-1)
         ttk.Entry(left, textvariable=self.seed_var, width=14).pack(anchor="w", pady=(4, 6))
 
+        self.auto_profile_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(left, text="自動硬體最佳化", variable=self.auto_profile_var,
+                        command=self._apply_hardware_profile).pack(anchor="w", pady=(2, 2))
         self.low_vram_var = tk.BooleanVar(value=True)
         ttk.Checkbutton(left, text="低 VRAM 模式", variable=self.low_vram_var).pack(anchor="w", pady=(2, 6))
         self.hardware_var = tk.StringVar(value="偵測硬體中…")
@@ -150,17 +156,19 @@ class BigIMGGenerateApp(tk.Tk):
         self.preview = ttk.Label(preview_box, anchor="center")
         self.preview.pack(fill="both", expand=True, padx=10, pady=10)
 
-        ttk.Label(center, text="已加入：LoRA + img2img｜下一階段：inpaint / BigIMG 放大串接 / 自動 VRAM profile").pack(anchor="w", pady=(10, 0))
+        ttk.Label(center, text="已加入：LoRA / img2img / inpaint / 自動 VRAM profile｜下一階段：BigIMG 放大串接").pack(anchor="w", pady=(10, 0))
 
-    def _refresh_hardware_status(self) -> None:
+    def _apply_hardware_profile(self) -> None:
+        profile = self.generator_engine.hardware_profile()
         name = self.generator_engine.device_name()
         vram = self.generator_engine.vram_gb()
-        if vram is None:
-            self.hardware_var.set(f"運算裝置：{name}｜未偵測到 CUDA VRAM")
-        else:
-            self.hardware_var.set(f"運算裝置：{name}｜VRAM 約 {vram:.1f} GB")
-            if vram <= 6:
-                self.low_vram_var.set(True)
+        vram_text = "無 CUDA VRAM" if vram is None else f"{vram:.1f} GB VRAM"
+        self.hardware_var.set(f"{name}｜{vram_text}｜建議：{profile['name']}")
+        if self.auto_profile_var.get():
+            self.width_var.set(profile["width"])
+            self.height_var.set(profile["height"])
+            self.steps_var.set(profile["steps"])
+            self.low_vram_var.set(profile["low_vram"])
 
     def refresh_models(self) -> None:
         self.models = scan_models(MODELS_DIR)
@@ -189,6 +197,17 @@ class BigIMGGenerateApp(tk.Tk):
         except Exception as exc:
             messagebox.showerror("無法讀取圖片", str(exc))
 
+    def select_mask_image(self) -> None:
+        path = filedialog.askopenfilename(filetypes=[("遮罩圖片", "*.png;*.jpg;*.jpeg;*.webp;*.bmp")])
+        if not path:
+            return
+        try:
+            self.mask_image = Image.open(path).convert("L")
+            self.mask_image_path = path
+            self.mask_label_var.set(Path(path).name + "｜白色區域會重繪")
+        except Exception as exc:
+            messagebox.showerror("無法讀取遮罩", str(exc))
+
     def _selected_model(self) -> ModelInfo:
         idx = self.model_combo.current()
         if idx < 0 or idx >= len(self.models):
@@ -204,7 +223,8 @@ class BigIMGGenerateApp(tk.Tk):
     def start_generate(self) -> None:
         try:
             model = self._selected_model()
-            mode = "img2img" if self.mode_var.get() == "參考圖生圖" else "txt2img"
+            mode_map = {"文字生圖": "txt2img", "參考圖生圖": "img2img", "局部重繪": "inpaint"}
+            mode = mode_map[self.mode_var.get()]
             req = GenerateRequest(
                 model_path=str(model.path),
                 family=self.family_var.get(),
@@ -220,6 +240,7 @@ class BigIMGGenerateApp(tk.Tk):
                 lora_scale=float(self.lora_scale_var.get()),
                 mode=mode,
                 input_image=self.input_image,
+                mask_image=self.mask_image,
                 strength=1.0 - float(self.preserve_var.get()),
             )
         except Exception as exc:
@@ -244,8 +265,9 @@ class BigIMGGenerateApp(tk.Tk):
                 "family": req.family,
                 "lora": req.lora_path,
                 "lora_scale": req.lora_scale,
-                "input_image": self.input_image_path if req.mode == "img2img" else None,
-                "preserve": 1.0 - req.strength if req.mode == "img2img" else None,
+                "input_image": self.input_image_path if req.mode in {"img2img", "inpaint"} else None,
+                "mask_image": self.mask_image_path if req.mode == "inpaint" else None,
+                "preserve": 1.0 - req.strength if req.mode in {"img2img", "inpaint"} else None,
                 "width": req.width,
                 "height": req.height,
                 "steps": req.steps,
@@ -277,10 +299,8 @@ class BigIMGGenerateApp(tk.Tk):
         if self.last_image is None:
             messagebox.showinfo("尚無圖片", "請先生成一張圖片。")
             return
-        path = filedialog.asksaveasfilename(
-            defaultextension=".png",
-            filetypes=[("PNG", "*.png"), ("JPEG", "*.jpg;*.jpeg")],
-        )
+        path = filedialog.asksaveasfilename(defaultextension=".png",
+                                            filetypes=[("PNG", "*.png"), ("JPEG", "*.jpg;*.jpeg")])
         if path:
             self.last_image.save(path)
             self.status_var.set(f"已儲存：{Path(path).name}")
