@@ -11,6 +11,7 @@ Windows 本機 AI 生圖工具。BigIMG Generate 與 BigIMG 圖片放大工具�
 - LoRA 掃描、載入與強度調整
 - VAE 掃描與切換
 - ControlNet 姿勢控制
+- IP-Adapter 人物參考一致性
 - OpenPose 自動抽人物骨架
 - 可直接載入現成 OpenPose 骨架圖
 - 自動硬體 / VRAM 建議設定
@@ -30,7 +31,8 @@ Windows 本機 AI 生圖工具。BigIMG Generate 與 BigIMG 圖片放大工具�
 6. 姿勢控制用 ControlNet 放進：
    - `models/controlnet/sd15/`
    - `models/controlnet/sdxl/`
-7. 執行 `run.bat`。
+7. IP-Adapter 權重放進 `models/ipadapter/sd15/` 或 `models/ipadapter/sdxl/`。
+8. 執行 `run.bat`。
 
 > 第一次安裝 Python 套件需要網路。OpenPose 自動抽骨架第一次使用時，還需要下載 OpenPose 偵測權重；下載後會使用本機快取。若要完全離線，也可以直接載入已經準備好的 OpenPose 骨架圖。
 
@@ -42,6 +44,7 @@ MVP 優先支援：
 - LoRA (`.safetensors`)
 - VAE (`.safetensors`)
 - ControlNet (`.safetensors` / `.ckpt` / `.pth`)
+- IP-Adapter (`.safetensors` / `.bin`)
 - 主模型 `.ckpt` 會列出，但不保證所有第三方模型都可載入
 
 第三方主模型、LoRA、VAE、ControlNet 必須彼此架構相容，例如 SD1.5 ControlNet 不應搭配 SDXL 主模型。
@@ -69,6 +72,22 @@ OpenPose 在這裡只負責把人物姿勢轉成骨架控制圖；真正控制�
 `controlnet_conditioning_scale` 預設為 0.8：
 - 較低：生成較自由
 - 較高：更強制遵循姿勢骨架
+
+## 人物參考一致性：IP-Adapter
+
+可選擇一張人物參考圖，搭配本機 IP-Adapter 權重，讓生成角色外觀更接近參考人物。
+
+使用方式：
+1. 選擇與主模型家族相容的 IP-Adapter。
+2. 選「人物參考圖」。
+3. 調整「一致性」強度，預設 0.65。
+4. 可單獨使用，也可和「姿勢控制」一起使用。
+
+搭配姿勢控制時：
+- OpenPose / ControlNet 控制姿勢
+- IP-Adapter 約束人物外觀
+
+目前第一版以單張人物參考圖為主，第三方 IP-Adapter 權重是否可直接載入，仍需用實際模型在 Windows GPU 驗證。
 
 ## 自動 VRAM profile
 
@@ -110,5 +129,5 @@ BigIMG Generate 與 BigIMG 維持兩個獨立工具。
 - BigIMG 主程式 handoff 接收端
 - 直接畫遮罩
 - 多 ControlNet
-- IP-Adapter / 人物一致性
+- 更進階的人物參考一致性
 - Windows EXE 打包與本機 GPU 實測
