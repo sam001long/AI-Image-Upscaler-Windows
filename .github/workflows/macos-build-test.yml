@@ -1,5 +1,5 @@
 name: macOS Build Test
-# v1.0.4 Apple Silicon compatibility + anonymous analytics
+# v1.0.3 Apple Silicon compatibility; v1.0.4 analytics temporarily paused
 
 on:
   workflow_dispatch:
@@ -61,13 +61,7 @@ jobs:
           grep -n "macOS 相容 2×" macos/buildsrc/BigIMG_macOS_v1_0/app_mac.py
           grep -n "update_idletasks" macos/buildsrc/BigIMG_macOS_v1_0/app_mac.py
 
-      - name: Apply macOS v1.0.4 anonymous analytics
-        run: |
-          python3 macos/patches/add_analytics_v1_0_4.py
-          grep -n "macOS v1.0.4" macos/buildsrc/BigIMG_macOS_v1_0/app_mac.py
-          grep -n "app_start" macos/buildsrc/BigIMG_macOS_v1_0/app_mac.py
-          grep -n "youtube_click" macos/buildsrc/BigIMG_macOS_v1_0/app_mac.py
-          grep -n "analytics_endpoint" macos/buildsrc/BigIMG_macOS_v1_0/app_mac.py
+      # v1.0.4 analytics is temporarily paused; keep its patch unapplied.
 
       - name: Setup Python 3.12
         uses: actions/setup-python@v5
@@ -135,13 +129,13 @@ jobs:
       - name: Package app
         working-directory: macos/buildsrc/BigIMG_macOS_v1_0
         run: |
-          tar -czf "BigIMG-macOS-v1.0.4-${{ matrix.runner }}.tar.gz" -C dist BigIMG.app
-          shasum -a 256 "BigIMG-macOS-v1.0.4-${{ matrix.runner }}.tar.gz"
+          tar -czf "BigIMG-macOS-v1.0.3-${{ matrix.runner }}.tar.gz" -C dist BigIMG.app
+          shasum -a 256 "BigIMG-macOS-v1.0.3-${{ matrix.runner }}.tar.gz"
 
       - name: Upload BigIMG.app artifact
         uses: actions/upload-artifact@v4
         with:
-          name: BigIMG-macOS-v1.0.4-${{ matrix.runner }}
-          path: macos/buildsrc/BigIMG_macOS_v1_0/BigIMG-macOS-v1.0.4-${{ matrix.runner }}.tar.gz
+          name: BigIMG-macOS-v1.0.3-${{ matrix.runner }}
+          path: macos/buildsrc/BigIMG_macOS_v1_0/BigIMG-macOS-v1.0.3-${{ matrix.runner }}.tar.gz
           if-no-files-found: error
           retention-days: 14
