@@ -11,16 +11,16 @@
     "watch_button_text": "立即觀看",
     "channel_button_text": "前往頻道",
     "source": "manual",
-    "video_id": "LzeJxN_CrwY",
-    "title": "《我的AI女友》我把十年的AI聊天記憶，傳進了她的身體｜科幻愛情MV",
-    "url": "https://www.youtube.com/watch?v=LzeJxN_CrwY"
+    "video_id": "CEWqTiWxFZk",
+    "title": "《午夜面具》萬聖夜的最後一舞｜如果天亮你就會消失，我就陪你跳到最後一秒｜Halloween Cinematic MV",
+    "url": "https://www.youtube.com/watch?v=CEWqTiWxFZk"
   },
   "contact": {
     "enabled": false,
     "title": "其他聯絡方式",
     "items": []
   },
-  "updated_at": "2026-10-09",
+  "updated_at": "2026-10-11",
   "analytics": {
     "enabled": false,
     "endpoint": "https://ai-image-upscaler-windows-analytics.vercel.app/api/track"
