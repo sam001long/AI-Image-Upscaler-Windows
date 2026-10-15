@@ -11,16 +11,16 @@
     "watch_button_text": "立即觀看",
     "channel_button_text": "前往頻道",
     "source": "manual",
-    "video_id": "CEWqTiWxFZk",
-    "title": "《午夜面具》萬聖夜的最後一舞｜如果天亮你就會消失，我就陪你跳到最後一秒｜Halloween Cinematic MV",
-    "url": "https://www.youtube.com/watch?v=CEWqTiWxFZk"
+    "video_id": "6hm9tBqQjH8",
+    "title": "【被豆漿耽誤的蛋塔店】第一次排隊是為了蛋塔，後來每一次都是為了妳｜排到你為止 愛情MV",
+    "url": "https://www.youtube.com/watch?v=6hm9tBqQjH8"
   },
   "contact": {
     "enabled": false,
     "title": "其他聯絡方式",
     "items": []
   },
-  "updated_at": "2026-10-11",
+  "updated_at": "2026-10-16",
   "analytics": {
     "enabled": false,
     "endpoint": "https://ai-image-upscaler-windows-analytics.vercel.app/api/track"
