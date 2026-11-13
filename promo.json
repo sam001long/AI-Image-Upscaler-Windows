@@ -11,16 +11,16 @@
     "watch_button_text": "立即觀看",
     "channel_button_text": "前往頻道",
     "source": "manual",
-    "video_id": "6hm9tBqQjH8",
-    "title": "【被豆漿耽誤的蛋塔店】第一次排隊是為了蛋塔，後來每一次都是為了妳｜排到你為止 愛情MV",
-    "url": "https://www.youtube.com/watch?v=6hm9tBqQjH8"
+    "video_id": "m6nK2HH5rmk",
+    "title": "YouTube Shorts",
+    "url": "https://www.youtube.com/shorts/m6nK2HH5rmk"
   },
   "contact": {
     "enabled": false,
     "title": "其他聯絡方式",
     "items": []
   },
-  "updated_at": "2026-10-16",
+  "updated_at": "2026-11-13",
   "analytics": {
     "enabled": false,
     "endpoint": "https://ai-image-upscaler-windows-analytics.vercel.app/api/track"
