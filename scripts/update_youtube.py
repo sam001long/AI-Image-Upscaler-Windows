@@ -77,9 +77,9 @@ payload = {
     "title": title,
     "url": video_url,
     "published": now,
-    # Keep the metadata lightweight. BigIMG only needs title + URL to enable
-    # the watch button; embedding a full thumbnail can make GitHub Contents API
-    # responses slow enough to exceed the desktop app timeout.
+    # Keep metadata lightweight. The desktop app can fetch this thumbnail URL
+    # separately instead of embedding the entire JPEG as base64 in JSON.
+    "thumbnail_url": f"https://i.ytimg.com/vi/{video_id}/mqdefault.jpg",
     "thumbnail_base64": "",
     "updated_at": now,
 }
