@@ -32,11 +32,19 @@ def load_selected_video():
     if not title:
         raise SystemExit("Missing YouTube title")
 
-    expected = f"https://www.youtube.com/watch?v={video_id}"
+    watch_url = f"https://www.youtube.com/watch?v={video_id}"
+    shorts_url = f"https://www.youtube.com/shorts/{video_id}"
+
     if not url:
-        url = expected
-    if url != expected:
-        raise SystemExit(f"YouTube url must be {expected}")
+        url = watch_url
+
+    # Manual selection supports both normal YouTube watch URLs and Shorts URLs.
+    # Ignore share-query parameters such as ?si=... when validating.
+    clean_url = url.split("?", 1)[0].rstrip("/")
+    if clean_url not in (watch_url, shorts_url):
+        raise SystemExit(
+            f"YouTube url must point to video_id {video_id} using /watch?v= or /shorts/"
+        )
 
     return video_id, title, url
 
