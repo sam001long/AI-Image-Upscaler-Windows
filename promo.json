@@ -20,7 +20,7 @@
     "title": "其他聯絡方式",
     "items": []
   },
-  "updated_at": "2026-11-14",
+  "updated_at": "2026-11-16",
   "analytics": {
     "enabled": false,
     "endpoint": "https://ai-image-upscaler-windows-analytics.vercel.app/api/track"
