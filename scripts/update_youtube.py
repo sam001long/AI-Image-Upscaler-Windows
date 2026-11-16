@@ -50,19 +50,18 @@ def load_selected_video():
 
 
 def fetch_thumbnail(video_id):
-    for thumb_url in (
-        f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg",
-        f"https://i.ytimg.com/vi/{video_id}/mqdefault.jpg",
-    ):
-        for delay in (0, 3, 8):
-            if delay:
-                time.sleep(delay)
-            try:
-                image = fetch(thumb_url)
-                if image:
-                    return base64.b64encode(image).decode("ascii")
-            except (urllib.error.URLError, OSError) as exc:
-                print(f"Thumbnail fetch failed: {exc}")
+    # Legacy BigIMG embeds the thumbnail inside latest_video.json.
+    # Use YouTube's tiny 120x90 thumbnail so the JSON stays small and reliable.
+    thumb_url = f"https://i.ytimg.com/vi/{video_id}/default.jpg"
+    for delay in (0, 2, 5):
+        if delay:
+            time.sleep(delay)
+        try:
+            image = fetch(thumb_url)
+            if image:
+                return base64.b64encode(image).decode("ascii")
+        except (urllib.error.URLError, OSError) as exc:
+            print(f"Thumbnail fetch failed: {exc}")
     return ""
 
 
@@ -77,10 +76,7 @@ payload = {
     "title": title,
     "url": video_url,
     "published": now,
-    # Keep metadata lightweight. The desktop app can fetch this thumbnail URL
-    # separately instead of embedding the entire JPEG as base64 in JSON.
-    "thumbnail_url": f"https://i.ytimg.com/vi/{video_id}/mqdefault.jpg",
-    "thumbnail_base64": "",
+    "thumbnail_base64": fetch_thumbnail(video_id),
     "updated_at": now,
 }
 
